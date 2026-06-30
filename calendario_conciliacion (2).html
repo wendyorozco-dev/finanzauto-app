@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calendario · Finanzauto–Promotec</title>
+<style>
+:root{
+  --ink:#1c2430;--paper:#f6f4ef;--card:#fff;--line:#e3ddd0;
+  --fz:#1d4ed8;--fz-bg:#e8eefd;--pt:#b5530f;--pt-bg:#fbeade;
+  --ct:#6d28d9;--ct-bg:#efe7fc;--ts:#047857;--ts-bg:#e2f6ee;
+  --weekend:#eceae3;--holiday:#d6463f;--holiday-bg:#fbe3e1;--gold:#b08a2e;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--paper);color:var(--ink);font-family:'Georgia',serif;font-size:14px;}
+body.view-only .edit-only{display:none!important;}
+body.view-only textarea{pointer-events:none;background:#f5f5f5;color:#9ca3af;}
+body.view-only .modal-save-btn{display:none!important;}
+
+/* LOADING */
+#loadingOverlay{display:none;position:fixed;inset:0;background:rgba(28,36,48,.7);
+  align-items:center;justify-content:center;z-index:500;flex-direction:column;gap:16px;}
+#loadingOverlay.on{display:flex;}
+.spinner{width:40px;height:40px;border:3px solid #475569;border-top-color:#94a3b8;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loadingMsg{color:#e2e8f0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;}
+
+/* USER BAR */
+.ubar{background:#1e293b;color:#fff;font-family:'Helvetica Neue',Arial,sans-serif;
+  display:flex;justify-content:space-between;align-items:center;padding:8px 22px;font-size:12px;}
+.ubar-left{display:flex;align-items:center;gap:10px;}
+.oc{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:2px 9px;border-radius:9px;color:#fff;}
+.rb{font-size:10px;padding:2px 9px;border-radius:9px;font-weight:600;}
+.rb-admin{background:#fbbf24;color:#1c1917;}.rb-edit{background:#34d399;color:#064e3b;}.rb-view{background:#94a3b8;color:#fff;}
+.ubar-right{display:flex;gap:8px;}
+.ubtn{background:none;border:1px solid #475569;color:#94a3b8;font-size:11px;padding:3px 10px;border-radius:3px;cursor:pointer;font-family:inherit;}
+.ubtn:hover{background:#334155;color:#fff;}
+.ubtn.abtn{border-color:#fbbf24;color:#fbbf24;}.ubtn.abtn:hover{background:#78350f;}
+
+/* LAYOUT */
+.wrap{max-width:1200px;margin:0 auto;padding:32px 24px 64px;}
+header.top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--ink);padding-bottom:16px;margin-bottom:8px;}
+header.top h1{font-size:24px;font-weight:600;}
+header.top .sub{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#6b6357;text-transform:uppercase;letter-spacing:1.4px;margin-top:2px;}
+.htag{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11.5px;color:#fff;background:var(--ink);padding:5px 12px;border-radius:2px;}
+
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12.5px;
+  margin:18px 0 28px;padding:12px 16px;background:var(--card);border:1px solid var(--line);}
+.legend .item{display:flex;align-items:center;gap:6px;}
+.dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;}
+
+.months{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+@media(max-width:860px){.months{grid-template-columns:1fr;}}
+.month-card{background:var(--card);border:1px solid var(--line);}
+.month-head{background:var(--ink);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:baseline;}
+.month-head h2{font-size:17px;font-weight:600;}
+.month-head .ciclo{font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;color:#cfd6e6;text-transform:uppercase;letter-spacing:.8px;}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);font-family:'Helvetica Neue',Arial,sans-serif;}
+.grid .dow{font-size:9.5px;text-align:center;padding:7px 0;color:#8a8273;letter-spacing:1px;border-bottom:1px solid var(--line);}
+.cell{min-height:70px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px;position:relative;cursor:pointer;}
+.grid>.cell:nth-child(7n){border-right:none;}
+.cell.empty{background:#fbfaf7;cursor:default;}
+.cell.weekend{background:var(--weekend);}
+.cell.holiday{background:var(--holiday-bg);}
+.daynum{font-size:11.5px;font-weight:600;color:#3a342a;}
+.holiday .daynum{color:var(--holiday);}
+.hol-name{font-size:7.5px;color:var(--holiday);font-weight:700;display:block;margin-top:1px;}
+.evt{font-size:8.5px;line-height:1.2;margin-top:2px;padding:1px 3px;border-radius:2px;font-weight:600;}
+.note-dot{position:absolute;bottom:3px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--gold);}
+.cell:hover{outline:1.5px solid var(--gold);outline-offset:-1.5px;}
+
+.timeline{margin-top:48px;background:var(--card);border:1px solid var(--line);padding:28px 30px;}
+.timeline h2{font-size:20px;margin-bottom:4px;}
+.tl-sub{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#6b6357;margin-bottom:24px;}
+.tl-item{display:grid;grid-template-columns:100px 16px 1fr;gap:12px;}
+.tl-date{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;font-weight:700;padding-top:2px;}
+.tl-rail{display:flex;flex-direction:column;align-items:center;}
+.tl-dot{width:10px;height:10px;border-radius:50%;margin-top:3px;flex:0 0 auto;}
+.tl-line{flex:1;width:2px;background:var(--line);margin-top:2px;}
+.tl-body{padding-bottom:20px;}
+.tl-body h4{font-size:14px;margin-bottom:2px;}
+.tl-body p{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#4c4738;line-height:1.5;}
+.tl-owner{font-family:'Helvetica Neue',Arial,sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;padding:1px 7px;border-radius:9px;display:inline-block;margin-bottom:4px;color:#fff;}
+
+/* MODALS */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(20,18,13,.54);align-items:center;justify-content:center;z-index:300;}
+.modal-bg.on{display:flex;}
+.modal{background:#fff;width:480px;max-width:94vw;padding:26px 28px;font-family:'Helvetica Neue',Arial,sans-serif;
+  box-shadow:0 8px 40px rgba(0,0,0,.22);border-radius:4px;max-height:90vh;overflow-y:auto;}
+.modal h3{font-family:Georgia,serif;font-size:18px;margin-bottom:4px;}
+.modal .msub{font-size:12px;color:#6b7280;margin-bottom:16px;line-height:1.5;}
+.modal label{display:block;font-size:12px;font-weight:600;margin-top:12px;margin-bottom:3px;}
+.modal input,.modal select,.modal textarea{width:100%;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid #d1d5db;border-radius:3px;}
+.modal textarea{min-height:68px;resize:vertical;}
+.modal .btnrow{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+.modal button{font-family:inherit;font-size:12.5px;padding:7px 18px;border:none;cursor:pointer;border-radius:3px;}
+.bp{background:var(--ink);color:#fff;}.bp:hover{background:#334155;}
+.bs{background:#f1f5f9;color:#334155;}
+.bd{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;}
+.err{color:#dc2626;font-size:12px;margin-top:8px;display:none;}
+
+/* STEPS */
+.steps{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:14px;margin-bottom:14px;}
+.steps h4{font-size:12.5px;font-weight:700;margin-bottom:10px;color:#374151;}
+.step{display:flex;gap:10px;margin-bottom:8px;font-size:12px;color:#374151;line-height:1.4;}
+.step-num{background:var(--ink);color:#fff;width:20px;height:20px;border-radius:50%;font-size:10px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex:0 0 20px;margin-top:1px;}
+.step a{color:var(--fz);}
+
+/* CONFIG RESULT */
+.config-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:14px;margin-top:14px;}
+.config-box h4{font-size:13px;font-weight:700;color:#15803d;margin-bottom:10px;}
+.url-line{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+.url-line input{flex:1;font-family:monospace;font-size:11px;padding:5px 8px;border:1px solid #d1d5db;border-radius:3px;background:#fff;}
+.copy-btn{background:#15803d;color:#fff;border:none;padding:5px 10px;border-radius:3px;cursor:pointer;font-size:11px;white-space:nowrap;}
+.copy-btn:hover{background:#166534;}
+
+/* PASSWORD PANEL */
+.pwd-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.pwd-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:13px;}
+.pwd-box h4{font-size:12px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.cpwd{font-family:monospace;font-size:13px;background:#e0f2fe;color:#0369a1;padding:3px 9px;border-radius:3px;display:inline-block;margin-bottom:7px;}
+.pi{width:100%;font-family:inherit;font-size:12px;padding:5px 8px;border:1px solid #d1d5db;border-radius:3px;}
+.spb{width:100%;margin-top:7px;background:var(--ink);color:#fff;border:none;padding:5px 10px;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11.5px;}
+.spb:hover{background:#334155;}
+.admin-wide{width:540px;}
+.note-attrib{font-size:11px;color:#6b7280;font-style:italic;margin-top:6px;}
+.note-attrib strong{font-style:normal;color:#374151;}
+
+footer{margin-top:28px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#9ca3af;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay"><div class="spinner"></div><div id="loadingMsg">Conectando...</div></div>
+
+<div class="ubar">
+  <div class="ubar-left">
+    <span>👤</span><span id="uName">—</span>
+    <span class="oc" id="uOrg" style="background:#475569">—</span>
+    <span class="rb" id="uRole">—</span>
+  </div>
+  <div class="ubar-right">
+    <button class="ubtn abtn edit-only" id="adminBtn" onclick="openAdmin()" style="display:none">⚙ Contraseñas</button>
+    <button class="ubtn" onclick="openLogin()">Cambiar usuario</button>
+  </div>
+</div>
+
+<div class="wrap" id="appWrap" style="display:none">
+  <header class="top">
+    <div>
+      <div class="sub">Operación de cobros · Vida y Autos</div>
+      <h1>Calendario Seguros Finanzauto ⇄ Operaciones Promotec</h1>
+    </div>
+    <div class="htag">Jul – Dic 2026</div>
+  </header>
+  <div class="legend" id="legend"></div>
+  <div class="months" id="months"></div>
+  <div class="timeline">
+    <h2>Línea de tiempo — Ciclo de cobros de Junio 2026</h2>
+    <div class="tl-sub">Inicia en julio 2026 con la entrega de la base de vigentes y finaliza con el reporte a tesorería en agosto 2026.</div>
+    <div id="tlContent"></div>
+  </div>
+  <footer>
+    Festivos 2026: 13 jul, 20 jul, 7 ago, 17 ago, 12 oct, 2 nov, 16 nov, 8 dic, 25 dic. ·
+    Las notas son compartidas en tiempo real entre todos los usuarios. Solo <strong>Edición</strong> y <strong>Administrador</strong> pueden escribir notas.
+  </footer>
+</div>
+
+<!-- NOTE MODAL -->
+<div class="modal-bg" id="noteBg">
+  <div class="modal">
+    <h3 id="nTitle">—</h3>
+    <div class="msub" id="nDate"></div>
+    <div id="nEvents"></div>
+    <label>Nota compartida</label>
+    <textarea id="nText" placeholder="Agregar nota u observación..."></textarea>
+    <div id="nAttrib" class="note-attrib"></div>
+    <div class="btnrow">
+      <button class="bs" onclick="closeM('noteBg')">Cerrar</button>
+      <button class="bp modal-save-btn" onclick="saveNote()">Guardar nota</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="modal-bg" id="loginBg">
+  <div class="modal" style="width:400px">
+    <h3>Acceder al calendario</h3>
+    <div class="msub">Ingresa tus datos y la contraseña que te compartió el administrador.</div>
+    <label>Nombre completo</label>
+    <input type="text" id="lName" placeholder="Ej: María López">
+    <label>Organización</label>
+    <select id="lOrg">
+      <option value="FZ">Seguros Finanzauto</option>
+      <option value="PT">Operaciones Promotec</option>
+      <option value="CT">Contabilidad</option>
+      <option value="TS">Tesorería</option>
+      <option value="other">Otro</option>
+    </select>
+    <label>Contraseña de acceso</label>
+    <input type="password" id="lPwd" placeholder="Contraseña" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="err" id="lErr"></div>
+    <div class="btnrow"><button class="bp" onclick="doLogin()">Ingresar</button></div>
+  </div>
+</div>
+
+<!-- SETUP MODAL (first run) -->
+<div class="modal-bg" id="setupBg">
+  <div class="modal">
+    <h3>⚙ Configuración inicial</h3>
+    <div class="msub">Sigue estos pasos para dejar el calendario funcionando para todo tu equipo.</div>
+
+    <div class="steps">
+      <h4>📋 Pasos previos (solo la primera vez)</h4>
+      <div class="step"><span class="step-num">1</span><span>Ve a <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> → crea una cuenta gratuita → en "API Keys" copia tu <strong>Master Key</strong>.</span></div>
+      <div class="step"><span class="step-num">2</span><span>Descarga ambos archivos HTML y súbelos a <a href="https://app.netlify.com/drop" target="_blank">netlify.com/drop</a> (gratis, sin registro). Anota la URL que te da, ej: <em>https://abc123.netlify.app</em></span></div>
+      <div class="step"><span class="step-num">3</span><span>Abre <strong>este archivo desde Netlify</strong> y completa la configuración aquí abajo.</span></div>
+    </div>
+
+    <label>Tu nombre completo</label>
+    <input type="text" id="sName" placeholder="Ej: Juan Pérez">
+    <label>Tu organización</label>
+    <select id="sOrg">
+      <option value="FZ">Seguros Finanzauto</option>
+      <option value="PT">Operaciones Promotec</option>
+      <option value="CT">Contabilidad</option>
+      <option value="TS">Tesorería</option>
+    </select>
+    <label>🔑 Master Key de JSONBin</label>
+    <input type="text" id="sApiKey" placeholder="$2a$10$...">
+    <label>🔵 Contraseña Administrador <span style="font-size:11px;color:#6b7280">(acceso completo)</span></label>
+    <input type="text" id="sAdmin" placeholder="Ej: Admin2026!">
+    <label>🟢 Contraseña Edición <span style="font-size:11px;color:#6b7280">(puede agregar notas)</span></label>
+    <input type="text" id="sEdit" placeholder="Ej: Editor2026">
+    <label>⚪ Contraseña Visualización <span style="font-size:11px;color:#6b7280">(solo lectura)</span></label>
+    <input type="text" id="sView" placeholder="Ej: Ver2026">
+    <div class="err" id="sErr"></div>
+    <div class="btnrow"><button class="bp" onclick="doSetup()">Configurar y crear almacenamiento</button></div>
+
+    <div class="config-box" id="setupResult" style="display:none">
+      <h4>✅ Configuración exitosa</h4>
+      <p style="font-size:12px;color:#374151;margin-bottom:10px">Comparte el link con tu equipo junto con la contraseña correspondiente.</p>
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:#374151;font-weight:700;margin-bottom:5px">📅 Link del CALENDARIO</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div id="previewCal" style="flex:1;font-family:monospace;font-size:10px;background:#f0fdf4;border:1px solid #bbf7d0;padding:7px 10px;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151;cursor:pointer" title="Click para ver URL completa"></div>
+          <button id="btnCal" style="background:#15803d;color:#fff;border:none;padding:8px 14px;border-radius:3px;cursor:pointer;font-family:inherit;font-size:12px;white-space:nowrap;flex:0 0 auto" onclick="doCopy('cal')">📋 Copiar</button>
+        </div>
+      </div>
+      <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:3px;padding:10px;margin-bottom:12px;font-size:11.5px;color:#92400e">
+        <strong>Para el ANS Tracker:</strong> abre <code>ans_tracker.html</code> desde Netlify y en el campo "Código del Calendario" pega este código:<br>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <div id="previewCode" style="flex:1;font-family:monospace;font-size:10px;background:#fff;border:1px solid #fcd34d;padding:5px 8px;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151"></div>
+          <button id="btnCode" style="background:#b45309;color:#fff;border:none;padding:6px 10px;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;white-space:nowrap;flex:0 0 auto" onclick="doCopy('code')">📋 Copiar código</button>
+        </div>
+      </div>
+      <p style="font-size:11px;color:#6b7280">Cada usuario solo necesita su nombre y contraseña al abrir el link.</p>
+      <div class="btnrow" style="margin-top:12px"><button class="bp" onclick="enterApp()">Entrar al calendario →</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIG PASTE MODAL (new device, no config in storage) -->
+<div class="modal-bg" id="configBg">
+  <div class="modal" style="width:420px">
+    <h3>Ingresar código de acceso</h3>
+    <div class="msub">El administrador te habrá compartido un link completo. Si abriste el link completo y ves esta pantalla, pega el código de configuración aquí abajo.</div>
+    <label>Código de configuración</label>
+    <textarea id="configCode" rows="3" placeholder="Pega aquí el código que te envió el administrador..."></textarea>
+    <div class="err" id="cfgErr"></div>
+    <div class="btnrow">
+      <button class="bp" onclick="applyConfigCode()">Aplicar código</button>
+    </div>
+    <p style="font-size:11px;color:#9ca3af;margin-top:12px">Si eres el administrador y no tienes el código, cierra esta ventana y busca el link completo en tus notas.</p>
+  </div>
+</div>
+
+<!-- ADMIN PASSWORDS PANEL -->
+<div class="modal-bg" id="adminBg">
+  <div class="modal admin-wide">
+    <h3>⚙ Gestionar contraseñas de acceso</h3>
+    <div class="msub">Cambia las contraseñas cuando lo necesites. Los cambios aplican de inmediato. Comparte cada contraseña solo con los usuarios que deban tener ese nivel.</div>
+    <div class="pwd-row">
+      <div class="pwd-box">
+        <h4><span class="rb rb-view">Solo visualización</span></h4>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:5px">Contraseña actual:</div>
+        <div class="cpwd" id="showView">—</div>
+        <input class="pi" type="text" id="newView" placeholder="Nueva contraseña">
+        <button class="spb" onclick="changePwd('view')">Actualizar</button>
+      </div>
+      <div class="pwd-box">
+        <h4><span class="rb rb-edit">Edición</span></h4>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:5px">Contraseña actual:</div>
+        <div class="cpwd" id="showEdit">—</div>
+        <input class="pi" type="text" id="newEdit" placeholder="Nueva contraseña">
+        <button class="spb" onclick="changePwd('edit')">Actualizar</button>
+      </div>
+    </div>
+    <div class="pwd-box">
+      <h4><span class="rb rb-admin">Administrador</span></h4>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:5px">Contraseña actual:</div>
+      <div class="cpwd" id="showAdmin">—</div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+        <input class="pi" type="text" id="newAdmin" placeholder="Nueva contraseña">
+        <button class="spb" style="width:auto;padding:5px 14px" onclick="changePwd('admin')">Actualizar</button>
+      </div>
+    </div>
+    <div class="btnrow" style="margin-top:14px">
+      <button class="bs" onclick="closeM('adminBg')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── JSONBIN API ─────────────────────────────────────────────────────
+const JB = 'https://api.jsonbin.io/v3';
+
+async function jbCreate(name, initData, key) {
+  const r = await fetch(`${JB}/b`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':name,'X-Bin-Private':'true'},
+    body: JSON.stringify(initData)
+  });
+  if (!r.ok) { const t=await r.text(); throw new Error(`JSONBin error ${r.status}: ${t}`); }
+  return (await r.json()).metadata.id;
+}
+
+async function jbRead(id, key) {
+  const r = await fetch(`${JB}/b/${id}/latest`, {
+    headers:{'X-Master-Key':key}
+  });
+  if (!r.ok) throw new Error(`JSONBin read error ${r.status}`);
+  return (await r.json()).record;
+}
+
+async function jbUpdate(id, newData, key) {
+  const r = await fetch(`${JB}/b/${id}`, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json','X-Master-Key':key},
+    body: JSON.stringify(newData)
+  });
+  if (!r.ok) throw new Error(`JSONBin update error ${r.status}`);
+}
+
+// ── CONFIG ──────────────────────────────────────────────────────────
+// config = { k: apiKey, pb: passwordsBinId, nb: notesBinId, db: ansBinId (optional) }
+let cfg = null;
+const CFG_KEY = 'fz-cal-cfg-v1';
+const SES_KEY = 'fz-cal-ses-v1';
+
+function saveConfigLocal() { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
+function loadConfigLocal() {
+  try { const s=localStorage.getItem(CFG_KEY); if(s) cfg=JSON.parse(s); } catch(e) {}
+}
+function configFromHash() {
+  try {
+    const h = window.location.hash.slice(1);
+    if (!h) return false;
+    const parsed = JSON.parse(atob(h));
+    if (parsed.k && parsed.pb && parsed.nb) { cfg=parsed; saveConfigLocal(); return true; }
+  } catch(e) {}
+  return false;
+}
+function makeShareableUrl(fileUrl, configObj) {
+  return fileUrl + '#' + btoa(JSON.stringify(configObj));
+}
+
+// ── STATE ───────────────────────────────────────────────────────────
+let passwords = {adminPwd:'', editPwd:'', viewPwd:''};
+let notes = {};
+let currentUser = null;
+
+// ── AUTH ────────────────────────────────────────────────────────────
+function matchPwd(p) {
+  if (!p) return null;
+  if (p === passwords.adminPwd) return 'admin';
+  if (p === passwords.editPwd)  return 'edit';
+  if (p === passwords.viewPwd)  return 'view';
+  return null;
+}
+function canEdit() { return currentUser && (currentUser.role==='admin'||currentUser.role==='edit'); }
+function isAdmin() { return currentUser && currentUser.role==='admin'; }
+
+const ORG_LABELS={FZ:'Seguros Finanzauto',PT:'Operaciones Promotec',CT:'Contabilidad',TS:'Tesorería',other:'Externo'};
+const ORG_COLORS={FZ:'#1d4ed8',PT:'#b5530f',CT:'#6d28d9',TS:'#047857',other:'#475569'};
+
+function applyPermissions() {
+  document.body.classList.toggle('view-only', !canEdit());
+  document.getElementById('adminBtn').style.display = isAdmin()?'inline-block':'none';
+  document.getElementById('appWrap').style.display = 'block';
+}
+function updateBar() {
+  if (!currentUser) return;
+  document.getElementById('uName').textContent = currentUser.name;
+  const oc=document.getElementById('uOrg');
+  oc.textContent = ORG_LABELS[currentUser.org]||currentUser.org;
+  oc.style.background = ORG_COLORS[currentUser.org]||'#475569';
+  const rb=document.getElementById('uRole');
+  rb.textContent = {admin:'Administrador',edit:'Edición',view:'Solo visualización'}[currentUser.role];
+  rb.className='rb rb-'+currentUser.role;
+}
+
+// ── LOADING ─────────────────────────────────────────────────────────
+function load(msg='Conectando...') { document.getElementById('loadingMsg').textContent=msg; document.getElementById('loadingOverlay').classList.add('on'); }
+function unload() { document.getElementById('loadingOverlay').classList.remove('on'); }
+
+// ── LOGIN ───────────────────────────────────────────────────────────
+function openLogin() {
+  document.getElementById('lName').value = currentUser?currentUser.name:'';
+  document.getElementById('lOrg').value = currentUser?currentUser.org:'FZ';
+  document.getElementById('lPwd').value = '';
+  document.getElementById('lErr').style.display='none';
+  document.getElementById('loginBg').classList.add('on');
+}
+async function doLogin() {
+  const name=document.getElementById('lName').value.trim();
+  const org=document.getElementById('lOrg').value;
+  const pwd=document.getElementById('lPwd').value;
+  if (!name) { showErr('lErr','Por favor ingresa tu nombre.'); return; }
+  const role=matchPwd(pwd);
+  if (!role) { showErr('lErr','Contraseña incorrecta. Verifica con el administrador.'); return; }
+  currentUser={name,org,role};
+  localStorage.setItem(SES_KEY, JSON.stringify(currentUser));
+  closeM('loginBg'); updateBar(); applyPermissions(); renderMonths();
+}
+
+// ── SETUP ───────────────────────────────────────────────────────────
+async function doSetup() {
+  const name=document.getElementById('sName').value.trim();
+  const org=document.getElementById('sOrg').value;
+  const apiKey=document.getElementById('sApiKey').value.trim();
+  const adminPwd=document.getElementById('sAdmin').value.trim();
+  const editPwd=document.getElementById('sEdit').value.trim();
+  const viewPwd=document.getElementById('sView').value.trim();
+  const errEl=document.getElementById('sErr');
+  errEl.style.display='none';
+
+  if (!name||!apiKey||!adminPwd||!editPwd||!viewPwd) {
+    showErr('sErr','Por favor completa todos los campos.'); return;
+  }
+  if (adminPwd===editPwd||adminPwd===viewPwd||editPwd===viewPwd) {
+    showErr('sErr','Las tres contraseñas deben ser diferentes.'); return;
+  }
+
+  load('Creando almacenamiento en JSONBin...');
+  try {
+    const pb = await jbCreate('fz-passwords', {adminPwd,editPwd,viewPwd}, apiKey);
+    const nb = await jbCreate('fz-cal-notes', {"_v":1}, apiKey);
+    const db = await jbCreate('fz-ans-data',  {"_v":1}, apiKey);
+
+    cfg = {k:apiKey, pb, nb, db};
+    saveConfigLocal();
+    passwords = {adminPwd,editPwd,viewPwd};
+    notes = {};
+    currentUser = {name,org,role:'admin'};
+    localStorage.setItem(SES_KEY, JSON.stringify(currentUser));
+
+    // Build shareable URLs from base domain
+    const currentUrl = window.location.href.split('#')[0];
+    const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
+    const calUrl  = baseUrl + 'calendario_conciliacion.html';
+    const ansUrl  = baseUrl + 'ans_tracker.html';
+    const hash = btoa(JSON.stringify(cfg));
+    _calUrl = calUrl + '#' + hash;
+    _ansUrl = ansUrl + '#' + hash;
+
+    showResult(_calUrl, _ansUrl, hash);
+    unload();
+  } catch(e) {
+    unload();
+    showErr('sErr', `Error al conectar con JSONBin: ${e.message}. Verifica que tu Master Key sea correcta (debe empezar con $2a$10$) y que tengas conexión a internet.`);
+  }
+}
+
+function enterApp() {
+  closeM('setupBg'); updateBar(); applyPermissions();
+  buildLegend(); buildTimeline(); renderMonths();
+}
+let _calUrl='', _ansUrl='';
+function showResult(calUrl, ansUrl, hash){
+  // Show the result div FIRST, then populate elements
+  const resultDiv = document.getElementById('setupResult');
+  resultDiv.style.display = 'block';
+  // Now elements exist and are accessible
+  const ids = {
+    previewCal: calUrl, previewAns: ansUrl,
+    previewCode: hash
+  };
+  Object.entries(ids).forEach(([id, val])=>{
+    const el = document.getElementById(id);
+    if(el){ el.textContent = val; el.title = val; }
+  });
+}
+async function doCopy(which){
+  const txtMap={cal:_calUrl, ans:_ansUrl, code:btoa(JSON.stringify(cfg))};
+  const txt = txtMap[which]||'';
+  if(!txt){ alert('No hay URL disponible aún.'); return; }
+  const btnId = 'btn'+which.charAt(0).toUpperCase()+which.slice(1);
+  const btn = document.getElementById(btnId);
+  const origTxt = btn ? btn.textContent : '';
+  try{ await navigator.clipboard.writeText(txt); }
+  catch(e){
+    const ta=document.createElement('textarea');
+    ta.value=txt; ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+  }
+  if(btn){ btn.textContent='✓ Copiado!'; btn.style.background='#166534';
+    setTimeout(()=>{ btn.textContent=origTxt; btn.style.background=which==='code'?'#b45309':'#15803d'; },2500); }
+}
+
+// ── CONFIG CODE ─────────────────────────────────────────────────────
+function applyConfigCode() {
+  const code=document.getElementById('configCode').value.trim();
+  try {
+    const parsed = JSON.parse(atob(code));
+    if (!parsed.k||!parsed.pb||!parsed.nb) throw new Error('Código incompleto');
+    cfg = parsed; saveConfigLocal();
+    closeM('configBg');
+    loadAndShowLogin();
+  } catch(e) {
+    showErr('cfgErr', 'Código inválido. Verifica que hayas copiado el código completo.');
+  }
+}
+
+// ── ADMIN PANEL ──────────────────────────────────────────────────────
+function openAdmin() {
+  document.getElementById('showAdmin').textContent = passwords.adminPwd||'—';
+  document.getElementById('showEdit').textContent = passwords.editPwd||'—';
+  document.getElementById('showView').textContent = passwords.viewPwd||'—';
+  ['Admin','Edit','View'].forEach(t=>document.getElementById('new'+t).value='');
+  document.getElementById('adminBg').classList.add('on');
+}
+async function changePwd(type) {
+  const map={admin:'newAdmin',edit:'newEdit',view:'newView'};
+  const val=document.getElementById(map[type]).value.trim();
+  if (!val) { alert('Ingresa la nueva contraseña.'); return; }
+  const others=['admin','edit','view'].filter(t=>t!==type).map(t=>passwords[t+'Pwd']);
+  if (others.includes(val)) { alert('Esa contraseña ya está en uso.'); return; }
+  load('Guardando...');
+  passwords[type+'Pwd']=val;
+  try { await jbUpdate(cfg.pb, passwords, cfg.k); unload(); openAdmin(); alert('✓ Contraseña actualizada.'); }
+  catch(e) { unload(); alert('Error al guardar: '+e.message); passwords[type+'Pwd']=others[0]||''; }
+}
+
+// ── NOTES ────────────────────────────────────────────────────────────
+let activeCellKey=null;
+function fmtTs(ts){ if(!ts)return''; const d=new Date(ts); return d.toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}); }
+
+function openNoteModal(key) {
+  activeCellKey=key;
+  const evts=EVENTS[key]||[];
+  const d=new Date(key+'T00:00:00');
+  const fmt=d.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('nTitle').textContent=evts.length?evts.map(e=>e.title).join(' · '):'Nota libre';
+  document.getElementById('nDate').textContent=fmt.charAt(0).toUpperCase()+fmt.slice(1)+(HOLIDAYS[key]?` · ${HOLIDAYS[key]}`:'');
+  document.getElementById('nEvents').innerHTML=evts.map(e=>{
+    const b=ownerBadge(e.owner);
+    return`<div style="font-size:12px;padding:5px 8px;margin-bottom:4px;border-radius:3px;background:${b.bg};color:${b.color}">
+      <span style="background:${b.color};color:#fff;font-size:9px;font-weight:700;text-transform:uppercase;padding:1px 6px;border-radius:9px;margin-right:5px">${b.name}</span>
+      <span style="background:#33302a;color:#fff;font-size:9px;font-weight:700;text-transform:uppercase;padding:1px 6px;border-radius:9px;margin-right:5px">Cobro ${e.cobro}</span>
+      <strong>${e.code}</strong> — ${e.desc}
+    </div>`;
+  }).join('')||`<div style="font-size:12px;color:#9ca3af;margin-bottom:10px">Sin hitos este día.</div>`;
+  const n=notes[key];
+  document.getElementById('nText').value=n?n.text:'';
+  document.getElementById('nAttrib').innerHTML=n?`Última edición: <strong>${n.editedBy}</strong> · ${ORG_LABELS[n.editedOrg]||''} · ${fmtTs(n.editedAt)}`:'';
+  document.getElementById('noteBg').classList.add('on');
+}
+async function saveNote() {
+  const val=document.getElementById('nText').value.trim();
+  if (val) { notes[activeCellKey]={text:val,editedBy:currentUser.name,editedOrg:currentUser.org,editedAt:new Date().toISOString()}; }
+  else { delete notes[activeCellKey]; }
+  load('Guardando nota...');
+  try { await jbUpdate(cfg.nb, notes, cfg.k); unload(); renderMonths(); closeM('noteBg'); }
+  catch(e) { unload(); alert('Error al guardar nota: '+e.message); }
+}
+
+// ── CALENDAR DATA ───────────────────────────────────────────────────
+const OWNERS={FZ:{name:'Seguros Finanzauto',color:'#1d4ed8',bg:'#e8eefd'},PT:{name:'Operaciones Promotec',color:'#b5530f',bg:'#fbeade'},CT:{name:'Contabilidad',color:'#6d28d9',bg:'#efe7fc'},TS:{name:'Tesorería',color:'#047857',bg:'#e2f6ee'}};
+const HOLIDAYS={'2026-07-13':'Festivo especial','2026-07-20':'Independencia','2026-08-07':'Boyacá','2026-08-17':'Asunción','2026-10-12':'Día de la Raza','2026-11-02':'Todos los Santos','2026-11-16':'Ind. Cartagena','2026-12-08':'Inmaculada','2026-12-25':'Navidad'};
+const MONTHS=[{y:2026,m:6,label:'Julio 2026',cycleLabel:'Cobro JUNIO'},{y:2026,m:7,label:'Agosto 2026',cycleLabel:'Cobro JULIO'},{y:2026,m:8,label:'Septiembre 2026',cycleLabel:'Cobro AGOSTO'},{y:2026,m:9,label:'Octubre 2026',cycleLabel:'Cobro SEPTIEMBRE'},{y:2026,m:10,label:'Noviembre 2026',cycleLabel:'Cobro OCTUBRE'},{y:2026,m:11,label:'Diciembre 2026',cycleLabel:'Cobro NOVIEMBRE'}];
+const EVENTS={'2026-07-02':[{owner:'FZ',code:'H1',cobro:'Junio',title:'Entrega base vigentes',desc:'2º día hábil.'}],'2026-07-03':[{owner:'PT',code:'H2',cobro:'Junio',title:'1ª retroalimentación vigentes',desc:'Duplicados, placas erradas y coexistencia.'},{owner:'AS',code:'H3',cobro:'Junio',title:'Entrega cobros aseguradoras',desc:'Día 5 cae domingo → adelantado.'}],'2026-07-10':[{owner:'PT',code:'H4',cobro:'Junio',title:'Cobros conciliados a Seguros Finanzauto',desc:'Cruce vigentes, exclusiones y novedades.'}],'2026-07-17':[{owner:'PT',code:'H6',cobro:'Junio',title:'Conciliación robusta + base vigentes ajustada',desc:'4 días hábiles desde H4.'}],'2026-07-21':[{owner:'FZ',code:'H5/H7',cobro:'Junio',title:'Cierre conciliación + entrega Contabilidad',desc:'5 días hábiles desde H4 (13 jul festivo).'}],'2026-07-28':[{owner:'CT',code:'H8',cobro:'Junio',title:'Resultado conciliación Contabilidad',desc:'5 días hábiles desde H7.'}],'2026-08-04':[{owner:'FZ',code:'H1',cobro:'Julio',title:'Entrega base vigentes',desc:'2º día hábil.'}],'2026-08-05':[{owner:'PT',code:'H2',cobro:'Julio',title:'1ª retroalimentación vigentes',desc:'Duplicados, placas y coexistencia.'},{owner:'AS',code:'H3',cobro:'Julio',title:'Entrega cobros aseguradoras',desc:'Día 5 calendario.'}],'2026-08-10':[{owner:'PT',code:'H4',cobro:'Julio',title:'Cobros conciliados a Seguros Finanzauto',desc:'Día 10 calendario.'}],'2026-08-14':[{owner:'PT',code:'H6',cobro:'Julio',title:'Conciliación robusta + base vigentes ajustada',desc:'4 días hábiles desde H4.'},{owner:'FZ',code:'H9',cobro:'Junio',title:'Retroalimentación final a Contabilidad',desc:'Cierra ciclo cobros JUNIO.'}],'2026-08-18':[{owner:'FZ',code:'H5/H7',cobro:'Julio',title:'Cierre conciliación + entrega Contabilidad',desc:'5 días hábiles desde H4.'}],'2026-08-25':[{owner:'CT',code:'H8',cobro:'Julio',title:'Resultado conciliación Contabilidad',desc:'5 días hábiles desde H7.'}],'2026-08-26':[{owner:'TS',code:'H10',cobro:'Junio',title:'PAGO · Reporte a Tesorería',desc:'Cobros JUNIO, ≥3 días hábiles antes del cierre.'}],'2026-09-02':[{owner:'FZ',code:'H1',cobro:'Agosto',title:'Entrega base vigentes',desc:'2º día hábil.'}],'2026-09-03':[{owner:'PT',code:'H2',cobro:'Agosto',title:'1ª retroalimentación vigentes',desc:'Hallazgos.'}],'2026-09-04':[{owner:'AS',code:'H3',cobro:'Agosto',title:'Entrega cobros aseguradoras',desc:'Día 5 cae sábado → adelantado.'}],'2026-09-10':[{owner:'PT',code:'H4',cobro:'Agosto',title:'Cobros conciliados a Seguros Finanzauto',desc:'Día 10.'},{owner:'FZ',code:'H9',cobro:'Julio',title:'Retroalimentación final a Contabilidad',desc:'Cierra ciclo cobros JULIO.'}],'2026-09-16':[{owner:'PT',code:'H6',cobro:'Agosto',title:'Conciliación robusta + base vigentes ajustada',desc:'4 días hábiles desde H4.'}],'2026-09-17':[{owner:'FZ',code:'H5/H7',cobro:'Agosto',title:'Cierre conciliación + entrega Contabilidad',desc:'5 días hábiles desde H4.'}],'2026-09-24':[{owner:'CT',code:'H8',cobro:'Agosto',title:'Resultado conciliación Contabilidad',desc:'5 días hábiles desde H7.'}],'2026-09-25':[{owner:'TS',code:'H10',cobro:'Julio',title:'PAGO · Reporte a Tesorería',desc:'Cobros JULIO.'}],'2026-10-02':[{owner:'FZ',code:'H1',cobro:'Septiembre',title:'Entrega base vigentes',desc:'2º día hábil.'}],'2026-10-05':[{owner:'PT',code:'H2',cobro:'Septiembre',title:'1ª retroalimentación vigentes',desc:'Hallazgos.'},{owner:'AS',code:'H3',cobro:'Septiembre',title:'Entrega cobros aseguradoras',desc:'Día 5 calendario.'}],'2026-10-09':[{owner:'PT',code:'H4',cobro:'Septiembre',title:'Cobros conciliados a Seguros Finanzauto',desc:'Día 10 cae sábado → adelantado.'}],'2026-10-13':[{owner:'FZ',code:'H9',cobro:'Agosto',title:'Retroalimentación final a Contabilidad',desc:'Cierra ciclo cobros AGOSTO.'}],'2026-10-16':[{owner:'PT',code:'H6',cobro:'Septiembre',title:'Conciliación robusta + base vigentes ajustada',desc:'4 días hábiles desde H4.'}],'2026-10-19':[{owner:'FZ',code:'H5/H7',cobro:'Septiembre',title:'Cierre conciliación + entrega Contabilidad',desc:'5 días hábiles desde H4.'}],'2026-10-26':[{owner:'CT',code:'H8',cobro:'Septiembre',title:'Resultado conciliación Contabilidad',desc:'5 días hábiles desde H7.'}],'2026-10-27':[{owner:'TS',code:'H10',cobro:'Agosto',title:'PAGO · Reporte a Tesorería',desc:'Cobros AGOSTO.'}],'2026-11-04':[{owner:'FZ',code:'H1',cobro:'Octubre',title:'Entrega base vigentes',desc:'2º día hábil.'}],'2026-11-05':[{owner:'PT',code:'H2',cobro:'Octubre',title:'1ª retroalimentación vigentes',desc:'Hallazgos.'},{owner:'AS',code:'H3',cobro:'Octubre',title:'Entrega cobros aseguradoras',desc:'Día 5 calendario.'}],'2026-11-10':[{owner:'PT',code:'H4',cobro:'Octubre',title:'Cobros conciliados a Seguros Finanzauto',desc:'Día 10.'}],'2026-11-12':[{owner:'FZ',code:'H9',cobro:'Septiembre',title:'Retroalimentación final a Contabilidad',desc:'Cierra ciclo cobros SEPTIEMBRE.'}],'2026-11-17':[{owner:'PT',code:'H6',cobro:'Octubre',title:'Conciliación robusta + base vigentes ajustada',desc:'4 días hábiles desde H4.'}],'2026-11-18':[{owner:'FZ',code:'H5/H7',cobro:'Octubre',title:'Cierre conciliación + entrega Contabilidad',desc:'5 días hábiles desde H4.'}],'2026-11-25':[{owner:'CT',code:'H8',cobro:'Octubre',title:'Resultado conciliación Contabilidad',desc:'5 días hábiles desde H7.'},{owner:'TS',code:'H10',cobro:'Septiembre',title:'PAGO · Reporte a Tesorería',desc:'Cobros SEPTIEMBRE.'}],'2026-12-02':[{owner:'FZ',code:'H1',cobro:'Noviembre',title:'Entrega base vigentes',desc:'2º día hábil.'}],'2026-12-03':[{owner:'PT',code:'H2',cobro:'Noviembre',title:'1ª retroalimentación vigentes',desc:'Hallazgos.'}],'2026-12-04':[{owner:'AS',code:'H3',cobro:'Noviembre',title:'Entrega cobros aseguradoras',desc:'Día 5 cae sábado → adelantado.'}],'2026-12-10':[{owner:'PT',code:'H4',cobro:'Noviembre',title:'Cobros conciliados a Seguros Finanzauto',desc:'Día 10.'}],'2026-12-14':[{owner:'FZ',code:'H9',cobro:'Octubre',title:'Retroalimentación final a Contabilidad',desc:'Cierra ciclo cobros OCTUBRE.'}],'2026-12-16':[{owner:'PT',code:'H6',cobro:'Noviembre',title:'Conciliación robusta + base vigentes ajustada',desc:'4 días hábiles desde H4.'}],'2026-12-17':[{owner:'FZ',code:'H5/H7',cobro:'Noviembre',title:'Cierre conciliación + entrega Contabilidad',desc:'5 días hábiles desde H4.'}],'2026-12-24':[{owner:'CT',code:'H8',cobro:'Noviembre',title:'Resultado conciliación Contabilidad',desc:'5 días hábiles desde H7. H9/H10 en enero 2027.'}],'2026-12-28':[{owner:'TS',code:'H10',cobro:'Octubre',title:'PAGO · Reporte a Tesorería',desc:'Cobros OCTUBRE.'}]};
+
+// ── CALENDAR RENDER ──────────────────────────────────────────────────
+function pad(n){return n<10?'0'+n:''+n;}
+function dkey(y,m,d){return`${y}-${pad(m+1)}-${pad(d)}`;}
+function isWeekend(y,m,d){const w=new Date(y,m,d).getDay();return w===0||w===6;}
+function ownerBadge(o){return o==='AS'?{name:'Aseguradoras',color:'#444',bg:'#eee'}:OWNERS[o];}
+
+function buildLegend(){
+  document.getElementById('legend').innerHTML=[
+    {l:'Seguros Finanzauto',c:'#1d4ed8'},{l:'Operaciones Promotec',c:'#b5530f'},
+    {l:'Contabilidad',c:'#6d28d9'},{l:'Tesorería',c:'#047857'},
+    {l:'Aseguradoras',c:'#444'},{l:'Festivo',c:'#d6463f'},{l:'Fin de semana',c:'#b9b3a3'},
+  ].map(i=>`<span class="item"><span class="dot" style="background:${i.c}"></span>${i.l}</span>`).join('');
+}
+function buildMonth({y,m,label,cycleLabel}){
+  let sdow=new Date(y,m,1).getDay(); sdow=sdow===0?6:sdow-1;
+  const dim=new Date(y,m+1,0).getDate();
+  let cells='';
+  for(let i=0;i<sdow;i++) cells+=`<div class="cell empty"></div>`;
+  for(let d=1;d<=dim;d++){
+    const key=dkey(y,m,d),wk=isWeekend(y,m,d),hol=HOLIDAYS[key];
+    let cls='cell'; if(hol)cls+=' holiday'; else if(wk)cls+=' weekend';
+    const evHtml=(EVENTS[key]||[]).map(e=>{const b=ownerBadge(e.owner);return`<div class="evt" style="background:${b.bg};color:${b.color}">${e.code} <span style="opacity:.65">· ${e.cobro}</span></div>`;}).join('');
+    const n=notes[key];
+    cells+=`<div class="${cls}" onclick="openNoteModal('${key}')"><span class="daynum">${d}</span>${hol?`<span class="hol-name">${hol}</span>`:''}${evHtml}${n?`<span class="note-dot" title="${n.editedBy}"></span>`:''}</div>`;
+  }
+  return`<div class="month-card"><div class="month-head"><h2>${label}</h2><span class="ciclo">${cycleLabel}</span></div><div class="grid">${['L','M','X','J','V','S','D'].map(d=>`<div class="dow">${d}</div>`).join('')}${cells}</div></div>`;
+}
+function renderMonths(){ document.getElementById('months').innerHTML=MONTHS.map(buildMonth).join(''); }
+
+function buildTimeline(){
+  const items=[
+    {date:'Jue 2 jul',o:'FZ',t:'Entrega base de vigentes',d:'Seguros Finanzauto entrega la base de pólizas vigentes a Operaciones Promotec (2º día hábil de julio).'},
+    {date:'Vie 3 jul',o:'PT',t:'1ª retroalimentación de vigentes',d:'Duplicados, placas erradas y riesgos de coexistencia (1 día hábil después).'},
+    {date:'Vie 3 jul',o:'AS',t:'Entrega de cobros de aseguradoras',d:'Día 5 cae domingo; adelantado al día hábil anterior.'},
+    {date:'Vie 10 jul',o:'PT',t:'Cobros conciliados a Seguros Finanzauto',d:'Cruce vigentes, exclusiones y novedades. Día 10 calendario.'},
+    {date:'Vie 17 jul',o:'PT',t:'Conciliación robusta + base vigentes ajustada',d:'Novedades adicionales y base definitiva (4 días hábiles desde H4).'},
+    {date:'Mar 21 jul',o:'FZ',t:'Cierre interno y entrega a Contabilidad',d:'5 días hábiles desde H4, excluyendo el festivo del 13 jul.'},
+    {date:'Mar 28 jul',o:'CT',t:'Resultado de conciliación de Contabilidad',d:'5 días hábiles de revisión.'},
+    {date:'Vie 14 ago',o:'FZ',t:'Retroalimentación final a Contabilidad',d:'12 días hábiles desde H8 para cerrar el ejercicio de conciliación.'},
+    {date:'Mié 26 ago',o:'TS',t:'Reporte a Tesorería · PAGO',d:'Cobros de junio, 3 días hábiles antes del cierre de agosto.'},
+  ];
+  document.getElementById('tlContent').innerHTML=items.map((it,i)=>{
+    const b=ownerBadge(it.o);
+    return`<div class="tl-item"><div class="tl-date">${it.date}</div><div class="tl-rail"><div class="tl-dot" style="background:${b.color}"></div>${i<items.length-1?'<div class="tl-line"></div>':''}</div><div class="tl-body"><span class="tl-owner" style="background:${b.color}">${b.name}</span><h4>${it.t}</h4><p>${it.d}</p></div></div>`;
+  }).join('');
+}
+
+// ── UTILS ────────────────────────────────────────────────────────────
+function closeM(id){ document.getElementById(id).classList.remove('on'); }
+function showErr(id,msg){ const e=document.getElementById(id); e.textContent=msg; e.style.display='block'; }
+
+// ── INIT ─────────────────────────────────────────────────────────────
+async function loadAndShowLogin() {
+  load('Cargando datos...');
+  try {
+    passwords = await jbRead(cfg.pb, cfg.k);
+    notes     = await jbRead(cfg.nb, cfg.k);
+    unload();
+    // Try restore session
+    try {
+      const s=JSON.parse(localStorage.getItem(SES_KEY)||'{}');
+      if (s.name && s.role && matchPwd) { currentUser=s; updateBar(); applyPermissions(); buildLegend(); buildTimeline(); renderMonths(); return; }
+    } catch(e){}
+    openLogin();
+  } catch(e) {
+    unload();
+    alert('Error al cargar datos: '+e.message+'\nVerifica que el link sea correcto y vuelve a intentar.');
+  }
+}
+
+async function init() {
+  buildLegend(); buildTimeline();
+  // 1. Try URL hash config
+  if (configFromHash()) { await loadAndShowLogin(); return; }
+  // 2. Try localStorage config
+  loadConfigLocal();
+  if (cfg && cfg.k && cfg.pb && cfg.nb) { await loadAndShowLogin(); return; }
+  // 3. No config — show setup or config-paste
+  document.getElementById('setupBg').classList.add('on');
+}
+
+init();
+</script>
+</body>
+</html>

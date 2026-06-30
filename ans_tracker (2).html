@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control ANS · Finanzauto–Promotec</title>
+<style>
+:root{
+  --ink:#1c2430;--paper:#f5f3ee;--card:#fff;--line:#e3ddd0;
+  --fz:#1d4ed8;--fz-bg:#e8eefd;--pt:#b5530f;--pt-bg:#fbeade;
+  --ct:#6d28d9;--ct-bg:#efe7fc;--ts:#047857;--ts-bg:#e2f6ee;
+  --ok:#15803d;--ok-bg:#dcfce7;--ok-b:#86efac;
+  --warn:#b45309;--warn-bg:#fef3c7;--warn-b:#fcd34d;
+  --late:#b91c1c;--late-bg:#fee2e2;--late-b:#fca5a5;
+  --pend:#475569;--pend-bg:#f1f5f9;--pend-b:#cbd5e1;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--paper);color:var(--ink);font-family:'Helvetica Neue',Arial,sans-serif;font-size:13.5px;}
+body.view-only .edit-only{display:none!important;}
+body.view-only input[type=date]{pointer-events:none;background:#f5f5f5;color:#9ca3af;}
+body.view-only .note-btn{pointer-events:none;opacity:.5;}
+
+#loadingOverlay{display:none;position:fixed;inset:0;background:rgba(28,36,48,.7);align-items:center;justify-content:center;z-index:500;flex-direction:column;gap:16px;}
+#loadingOverlay.on{display:flex;}
+.spinner{width:40px;height:40px;border:3px solid #475569;border-top-color:#94a3b8;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loadingMsg{color:#e2e8f0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;}
+
+.ubar{background:#1e293b;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:8px 22px;font-size:12px;}
+.ubar-left{display:flex;align-items:center;gap:10px;}
+.oc{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:2px 9px;border-radius:9px;color:#fff;}
+.rb{font-size:10px;padding:2px 9px;border-radius:9px;font-weight:600;}
+.rb-admin{background:#fbbf24;color:#1c1917;}.rb-edit{background:#34d399;color:#064e3b;}.rb-view{background:#94a3b8;color:#fff;}
+.ubar-right{display:flex;gap:8px;}
+.ubtn{background:none;border:1px solid #475569;color:#94a3b8;font-size:11px;padding:3px 10px;border-radius:3px;cursor:pointer;font-family:inherit;}
+.ubtn:hover{background:#334155;color:#fff;}
+.ubtn.abtn{border-color:#fbbf24;color:#fbbf24;}.ubtn.abtn:hover{background:#78350f;}
+
+.header{background:var(--ink);color:#fff;padding:18px 28px 0;}
+.header-top{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:14px;}
+.header-top h1{font-size:19px;font-weight:600;}
+.sub{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1.2px;margin-top:3px;}
+.badge{font-size:11px;background:#334155;padding:4px 10px;border-radius:2px;color:#e2e8f0;}
+.tabs{display:flex;gap:2px;overflow-x:auto;}
+.tab{padding:9px 16px;font-size:12.5px;font-weight:500;cursor:pointer;border-radius:3px 3px 0 0;color:#94a3b8;border:none;background:transparent;white-space:nowrap;}
+.tab:hover{color:#fff;background:#334155;}.tab.active{background:#fff;color:var(--ink);}
+
+.wrap{max-width:1320px;margin:0 auto;padding:22px 22px 60px;}
+.dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:24px;}
+.dc{background:var(--card);border:1px solid var(--line);padding:13px 16px;}
+.dl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-bottom:6px;}
+.dv{font-size:27px;font-weight:700;line-height:1;}.ds{font-size:11px;color:#6b7280;margin-top:3px;}
+.dc.ok .dv{color:var(--ok);}.dc.warn .dv{color:var(--warn);}.dc.late .dv{color:var(--late);}.dc.pend .dv{color:var(--pend);}
+.pbar{height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden;margin-top:10px;}
+.pbar-fill{height:100%;border-radius:2px;}.pf-ok{background:var(--ok);}.pf-warn{background:var(--warn);}.pf-late{background:var(--late);}
+
+.sec{margin-bottom:30px;}
+.sch{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--ink);}
+.sch h2{font-size:15.5px;font-weight:600;}
+.fb{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.fb select{font-family:inherit;font-size:12px;padding:4px 8px;border:1px solid var(--line);border-radius:3px;background:#fff;}
+.fb span{font-size:12px;color:#6b7280;}
+
+.tw{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;background:var(--card);font-size:12.5px;}
+thead th{background:var(--ink);color:#fff;padding:8px 11px;text-align:left;font-weight:500;font-size:11px;white-space:nowrap;}
+tbody tr{border-bottom:1px solid var(--line);}tbody tr:hover{background:#fafaf7;}
+td{padding:8px 11px;vertical-align:middle;}
+.chip{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 8px;border-radius:9px;color:#fff;white-space:nowrap;}
+.cFZ{background:#1d4ed8;}.cPT{background:#b5530f;}.cCT{background:#6d28d9;}.cTS{background:#047857;}.cAS{background:#374151;}
+.cAUTOS{background:#0e7490;}.cVIDA{background:#7c3aed;}.cVOL{background:#0f766e;}
+.sok{background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-b);font-size:10px;font-weight:600;padding:2px 8px;border-radius:9px;white-space:nowrap;}
+.slate{background:var(--late-bg);color:var(--late);border:1px solid var(--late-b);font-size:10px;font-weight:600;padding:2px 8px;border-radius:9px;white-space:nowrap;}
+.srisk{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-b);font-size:10px;font-weight:600;padding:2px 8px;border-radius:9px;white-space:nowrap;}
+.spend{background:var(--pend-bg);color:var(--pend);border:1px solid var(--pend-b);font-size:10px;font-weight:600;padding:2px 8px;border-radius:9px;white-space:nowrap;}
+.di{font-size:11px;font-weight:600;}.di.ok{color:var(--ok);}.di.late{color:var(--late);}
+.di-in{border:1px solid var(--line);padding:4px 7px;font-size:12px;font-family:inherit;border-radius:3px;width:130px;background:#fafaf7;}
+.di-in:focus{outline:1.5px solid var(--fz);background:#fff;}
+.di-in.filled{background:var(--ok-bg);border-color:var(--ok-b);}.di-in.latefill{background:var(--late-bg);border-color:var(--late-b);}
+.note-btn{background:none;border:1px solid var(--line);padding:3px 8px;border-radius:3px;cursor:pointer;font-size:11px;color:#6b7280;}
+.note-btn:hover{background:#f3f4f6;}.note-btn.has-note{border-color:var(--warn-b);color:var(--warn);}
+.by{font-size:10px;color:#9ca3af;margin-top:2px;}
+.sb{font-size:9.5px;padding:1px 5px;border-radius:2px;background:#e0f2fe;color:#0369a1;font-weight:600;margin-left:4px;}
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(20,18,13,.52);align-items:center;justify-content:center;z-index:300;}
+.modal-bg.on{display:flex;}
+.modal{background:#fff;width:440px;max-width:94vw;padding:24px 26px;box-shadow:0 8px 32px rgba(0,0,0,.2);border-radius:4px;font-family:'Helvetica Neue',Arial,sans-serif;max-height:90vh;overflow-y:auto;}
+.modal h3{font-size:17px;margin-bottom:4px;}
+.modal .msub{font-size:12px;color:#6b7280;margin-bottom:16px;line-height:1.5;}
+.modal label{display:block;font-size:12px;font-weight:600;margin-top:11px;margin-bottom:3px;}
+.modal input,.modal select,.modal textarea{width:100%;font-family:inherit;font-size:12.5px;padding:7px 10px;border:1px solid #d1d5db;border-radius:3px;}
+.modal textarea{min-height:68px;resize:vertical;}
+.modal .btnrow{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
+.modal button{font-family:inherit;font-size:12.5px;padding:7px 16px;border:none;cursor:pointer;border-radius:3px;}
+.bp{background:var(--ink);color:#fff;}.bp:hover{background:#334155;}
+.bs{background:#f1f5f9;color:#334155;}
+.clr{background:none;border:none;color:#dc2626;cursor:pointer;font-size:11px;text-decoration:underline;margin-top:4px;display:inline-block;}
+.att{font-size:10.5px;color:#6b7280;font-style:italic;margin-top:5px;}
+.att strong{font-style:normal;color:#374151;}
+.err{color:#dc2626;font-size:12px;margin-top:8px;display:none;}
+
+.steps{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:14px;margin-bottom:14px;}
+.steps h4{font-size:12.5px;font-weight:700;margin-bottom:10px;color:#374151;}
+.step{display:flex;gap:10px;margin-bottom:8px;font-size:12px;color:#374151;line-height:1.4;}
+.step-num{background:var(--ink);color:#fff;width:20px;height:20px;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 20px;margin-top:1px;}
+.step a{color:var(--fz);}
+.config-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:14px;margin-top:14px;}
+.config-box h4{font-size:13px;font-weight:700;color:#15803d;margin-bottom:10px;}
+.url-line{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+.url-line input{flex:1;font-family:monospace;font-size:11px;padding:5px 8px;border:1px solid #d1d5db;border-radius:3px;background:#fff;}
+.copy-btn{background:#15803d;color:#fff;border:none;padding:5px 10px;border-radius:3px;cursor:pointer;font-size:11px;white-space:nowrap;}
+.copy-btn:hover{background:#166534;}
+.pwd-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.pwd-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:13px;}
+.pwd-box h4{font-size:12px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.cpwd{font-family:monospace;font-size:13px;background:#e0f2fe;color:#0369a1;padding:3px 9px;border-radius:3px;display:inline-block;margin-bottom:7px;}
+.pi{width:100%;font-family:inherit;font-size:12px;padding:5px 8px;border:1px solid #d1d5db;border-radius:3px;}
+.spb{width:100%;margin-top:7px;background:var(--ink);color:#fff;border:none;padding:5px 10px;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11.5px;}
+.spb:hover{background:#334155;}
+.admin-wide{width:540px;}
+
+footer{font-size:11px;color:#9ca3af;margin-top:36px;line-height:1.7;}
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay"><div class="spinner"></div><div id="loadingMsg">Conectando...</div></div>
+
+<div class="ubar">
+  <div class="ubar-left">
+    <span>👤</span><span id="uName">—</span>
+    <span class="oc" id="uOrg" style="background:#475569">—</span>
+    <span class="rb" id="uRole">—</span>
+  </div>
+  <div class="ubar-right">
+    <button class="ubtn abtn edit-only" id="adminBtn" onclick="openAdmin()" style="display:none">⚙ Contraseñas</button>
+    <button class="ubtn" onclick="openLogin()">Cambiar usuario</button>
+  </div>
+</div>
+
+<div class="header" id="appHeader" style="display:none">
+  <div class="header-top">
+    <div><div class="sub">Control ANS · Operación de Cobros · Vida y Autos</div>
+      <h1>Seguros Finanzauto ⇄ Operaciones Promotec</h1></div>
+    <div class="badge">Jul – Dic 2026</div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+</div>
+
+<div class="wrap" id="appContent" style="display:none">
+  <div class="dash" id="dash"></div>
+  <div class="sec">
+    <div class="sch"><h2>Hitos del proceso</h2><span id="pInfo" style="font-size:11.5px;color:#6b7280"></span></div>
+    <div class="tw">
+      <table><thead><tr>
+        <th style="width:55px">Hito</th><th>Actividad</th><th>Responsable</th>
+        <th>Programado</th><th>Fecha real</th><th>Diff.</th><th>Estado ANS</th>
+        <th class="edit-only">Notas</th>
+      </tr></thead><tbody id="mBody"></tbody></table>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sch">
+      <h2>Cobros por aseguradora · H3</h2>
+      <div class="fb">
+        <span>Ramo:</span>
+        <select id="fRamo" onchange="renderIns()">
+          <option value="">Todos</option><option>Autos</option><option>Vida</option><option>Voluntarios</option>
+        </select>
+        <span>Aseguradora:</span>
+        <select id="fIns" onchange="renderIns()"><option value="">Todas</option></select>
+      </div>
+    </div>
+    <div class="tw">
+      <table><thead><tr>
+        <th>Ramo</th><th>Aseguradora</th><th>Programado (H3)</th>
+        <th>Fecha real</th><th>Diff.</th><th>Estado ANS</th>
+        <th class="edit-only">Notas</th>
+      </tr></thead><tbody id="iBody"></tbody></table>
+    </div>
+  </div>
+  <footer>
+    Festivos Colombia 2026: 13 jul, 20 jul, 7 ago, 17 ago, 12 oct, 2 nov, 16 nov, 8 dic, 25 dic. ·
+    H9 y H10 de cada ciclo se ejecutan en el mes siguiente. · Todos los cambios se guardan en tiempo real para todos los usuarios.
+  </footer>
+</div>
+
+<!-- ENTRY MODAL -->
+<div class="modal-bg" id="editBg">
+  <div class="modal">
+    <h3 id="eMT"></h3><div class="msub" id="eMS"></div>
+    <label>Fecha programada</label>
+    <input type="date" id="eSc" readonly style="background:#f8f8f8;color:#6b7280">
+    <label>Fecha real de entrega</label>
+    <input type="date" id="eAc">
+    <button class="clr" onclick="document.getElementById('eAc').value=''">✕ Limpiar fecha</button>
+    <label>Observaciones / Justificación</label>
+    <textarea id="eNo" placeholder="Causa de incumplimiento, acuerdos, etc."></textarea>
+    <div id="eAt" class="att"></div>
+    <div class="btnrow">
+      <button class="bs" onclick="closeM('editBg')">Cancelar</button>
+      <button class="bp" onclick="saveEntry()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="modal-bg" id="loginBg">
+  <div class="modal" style="width:400px">
+    <h3>Acceder al sistema ANS</h3>
+    <div class="msub">Ingresa tus datos y la contraseña que te compartió el administrador.</div>
+    <label>Nombre completo</label><input type="text" id="lName" placeholder="Ej: María López">
+    <label>Organización</label>
+    <select id="lOrg">
+      <option value="FZ">Seguros Finanzauto</option><option value="PT">Operaciones Promotec</option>
+      <option value="CT">Contabilidad</option><option value="TS">Tesorería</option><option value="other">Otro</option>
+    </select>
+    <label>Contraseña de acceso</label>
+    <input type="password" id="lPwd" placeholder="Contraseña" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="err" id="lErr"></div>
+    <div class="btnrow"><button class="bp" onclick="doLogin()">Ingresar</button></div>
+  </div>
+</div>
+
+<!-- SETUP MODAL -->
+<div class="modal-bg" id="setupBg">
+  <div class="modal">
+    <h3>⚙ Configuración inicial</h3>
+    <div class="msub">Sigue estos pasos para dejar el sistema ANS funcionando para todo tu equipo.</div>
+    <div class="steps">
+      <h4>📋 Pasos previos (solo la primera vez)</h4>
+      <div class="step"><span class="step-num">1</span><span>Ve a <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> → crea cuenta gratuita → en "API Keys" copia tu <strong>Master Key</strong>.</span></div>
+      <div class="step"><span class="step-num">2</span><span>Sube ambos archivos HTML a <a href="https://app.netlify.com/drop" target="_blank">netlify.com/drop</a> y anota la URL asignada.</span></div>
+      <div class="step"><span class="step-num">3</span><span>Si ya configuraste el <strong>Calendario</strong>, pega el código de configuración que generó en el campo de abajo para reutilizar las mismas contraseñas.</span></div>
+    </div>
+
+    <label>Código del Calendario (opcional — para compartir contraseñas)</label>
+    <textarea id="sCalCode" rows="2" placeholder="Pega aquí el código generado en el Calendario para reutilizar contraseñas y API key..."></textarea>
+    <div style="font-size:11px;color:#6b7280;margin-top:4px">O configura desde cero:</div>
+
+    <label>Tu nombre completo</label><input type="text" id="sName" placeholder="Ej: Juan Pérez">
+    <label>Tu organización</label>
+    <select id="sOrg">
+      <option value="FZ">Seguros Finanzauto</option><option value="PT">Operaciones Promotec</option>
+      <option value="CT">Contabilidad</option><option value="TS">Tesorería</option>
+    </select>
+    <label>🔑 Master Key de JSONBin <span style="font-size:11px;color:#6b7280">(puedes reutilizar la del Calendario)</span></label>
+    <input type="text" id="sApiKey" placeholder="$2a$10$...">
+    <label>🔵 Contraseña Administrador</label><input type="text" id="sAdmin" placeholder="Ej: Admin2026!">
+    <label>🟢 Contraseña Edición</label><input type="text" id="sEdit" placeholder="Ej: Editor2026">
+    <label>⚪ Contraseña Visualización</label><input type="text" id="sView" placeholder="Ej: Ver2026">
+    <div class="err" id="sErr"></div>
+    <div class="btnrow"><button class="bp" onclick="doSetup()">Configurar y crear almacenamiento</button></div>
+
+    <div class="config-box" id="setupResult" style="display:none">
+      <h4>✅ Configuración exitosa</h4>
+      <p style="font-size:12px;color:#374151;margin-bottom:10px">Comparte el link con tu equipo junto con la contraseña correspondiente.</p>
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:#374151;font-weight:700;margin-bottom:5px">📊 Link del ANS TRACKER</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div id="previewAns" style="flex:1;font-family:monospace;font-size:10px;background:#f0fdf4;border:1px solid #bbf7d0;padding:7px 10px;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151;cursor:pointer" title="Click para ver URL completa"></div>
+          <button id="btnAns" style="background:#15803d;color:#fff;border:none;padding:8px 14px;border-radius:3px;cursor:pointer;font-family:inherit;font-size:12px;white-space:nowrap;flex:0 0 auto" onclick="doCopy('ans')">📋 Copiar</button>
+        </div>
+      </div>
+      <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:3px;padding:10px;margin-bottom:12px;font-size:11.5px;color:#92400e">
+        <strong>Para el Calendario:</strong> abre <code>calendario_conciliacion.html</code> desde Netlify y en el campo "Código del Calendario" pega este código:<br>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <div id="previewCode" style="flex:1;font-family:monospace;font-size:10px;background:#fff;border:1px solid #fcd34d;padding:5px 8px;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151"></div>
+          <button id="btnCode" style="background:#b45309;color:#fff;border:none;padding:6px 10px;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;white-space:nowrap;flex:0 0 auto" onclick="doCopy('code')">📋 Copiar código</button>
+        </div>
+      </div>
+      <p style="font-size:11px;color:#6b7280">Cada usuario solo necesita su nombre y contraseña al abrir el link.</p>
+      <div class="btnrow" style="margin-top:12px"><button class="bp" onclick="enterApp()">Entrar al ANS Tracker →</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIG PASTE MODAL -->
+<div class="modal-bg" id="configBg">
+  <div class="modal" style="width:420px">
+    <h3>Ingresar código de acceso</h3>
+    <div class="msub">Si tienes el link completo compartido por el administrador, ábrelo directamente. Si necesitas configurar manualmente, pega el código aquí.</div>
+    <label>Código de configuración</label>
+    <textarea id="cfgCode" rows="3" placeholder="Pega el código de configuración..."></textarea>
+    <div class="err" id="cfgErr"></div>
+    <div class="btnrow"><button class="bp" onclick="applyCfgCode()">Aplicar código</button></div>
+  </div>
+</div>
+
+<!-- ADMIN PASSWORDS PANEL -->
+<div class="modal-bg" id="adminBg">
+  <div class="modal admin-wide">
+    <h3>⚙ Gestionar contraseñas de acceso</h3>
+    <div class="msub">Los cambios aplican de inmediato para todos los usuarios. Las contraseñas son compartidas con el Calendario si usaste el mismo JSONBin.</div>
+    <div class="pwd-row">
+      <div class="pwd-box">
+        <h4><span class="rb rb-view">Solo visualización</span></h4>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:5px">Contraseña actual:</div>
+        <div class="cpwd" id="showView">—</div>
+        <input class="pi" type="text" id="newView" placeholder="Nueva contraseña">
+        <button class="spb" onclick="changePwd('view')">Actualizar</button>
+      </div>
+      <div class="pwd-box">
+        <h4><span class="rb rb-edit">Edición</span></h4>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:5px">Contraseña actual:</div>
+        <div class="cpwd" id="showEdit">—</div>
+        <input class="pi" type="text" id="newEdit" placeholder="Nueva contraseña">
+        <button class="spb" onclick="changePwd('edit')">Actualizar</button>
+      </div>
+    </div>
+    <div class="pwd-box">
+      <h4><span class="rb rb-admin">Administrador</span></h4>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:5px">Contraseña actual:</div>
+      <div class="cpwd" id="showAdmin">—</div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+        <input class="pi" type="text" id="newAdmin" placeholder="Nueva contraseña">
+        <button class="spb" style="width:auto;padding:5px 14px" onclick="changePwd('admin')">Actualizar</button>
+      </div>
+    </div>
+    <div class="btnrow" style="margin-top:14px"><button class="bs" onclick="closeM('adminBg')">Cerrar</button></div>
+  </div>
+</div>
+
+<script>
+// ── JSONBIN API ─────────────────────────────────────────────────────
+const JB='https://api.jsonbin.io/v3';
+async function jbCreate(name,d,key){const r=await fetch(`${JB}/b`,{method:'POST',headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':name,'X-Bin-Private':'true'},body:JSON.stringify(d)});if(!r.ok)throw new Error(`${r.status}: ${await r.text()}`);return(await r.json()).metadata.id;}
+async function jbRead(id,key){const r=await fetch(`${JB}/b/${id}/latest`,{headers:{'X-Master-Key':key}});if(!r.ok)throw new Error(`Read ${r.status}`);return(await r.json()).record;}
+async function jbUpdate(id,d,key){const r=await fetch(`${JB}/b/${id}`,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':key},body:JSON.stringify(d)});if(!r.ok)throw new Error(`Update ${r.status}`);}
+
+// ── CONFIG ──────────────────────────────────────────────────────────
+let cfg=null;
+const CFG_KEY='fz-ans-cfg-v1', SES_KEY='fz-ans-ses-v1';
+function saveCfgLocal(){localStorage.setItem(CFG_KEY,JSON.stringify(cfg));}
+function loadCfgLocal(){try{const s=localStorage.getItem(CFG_KEY);if(s)cfg=JSON.parse(s);}catch(e){}}
+function cfgFromHash(){try{const h=window.location.hash.slice(1);if(!h)return false;const p=JSON.parse(atob(h));if(p.k&&p.pb&&p.db){cfg=p;saveCfgLocal();return true;}}catch(e){}return false;}
+
+// ── STATE ───────────────────────────────────────────────────────────
+const ORG_LABELS={FZ:'Seguros Finanzauto',PT:'Operaciones Promotec',CT:'Contabilidad',TS:'Tesorería',other:'Externo'};
+const ORG_COLORS={FZ:'#1d4ed8',PT:'#b5530f',CT:'#6d28d9',TS:'#047857',other:'#475569'};
+let passwords={adminPwd:'',editPwd:'',viewPwd:''};
+let ansData={};
+let currentUser=null, activePeriod='P07', modalCtx=null;
+
+function matchPwd(p){if(!p)return null;if(p===passwords.adminPwd)return'admin';if(p===passwords.editPwd)return'edit';if(p===passwords.viewPwd)return'view';return null;}
+function canEdit(){return currentUser&&(currentUser.role==='admin'||currentUser.role==='edit');}
+function isAdmin(){return currentUser&&currentUser.role==='admin';}
+
+function applyPermissions(){
+  document.body.classList.toggle('view-only',!canEdit());
+  document.getElementById('adminBtn').style.display=isAdmin()?'inline-block':'none';
+  document.getElementById('appHeader').style.display='block';
+  document.getElementById('appContent').style.display='block';
+}
+function updateBar(){
+  if(!currentUser)return;
+  document.getElementById('uName').textContent=currentUser.name;
+  const oc=document.getElementById('uOrg');
+  oc.textContent=ORG_LABELS[currentUser.org]||currentUser.org;
+  oc.style.background=ORG_COLORS[currentUser.org]||'#475569';
+  const rb=document.getElementById('uRole');
+  rb.textContent={admin:'Administrador',edit:'Edición',view:'Solo visualización'}[currentUser.role];
+  rb.className='rb rb-'+currentUser.role;
+}
+function load(m='Conectando...'){document.getElementById('loadingMsg').textContent=m;document.getElementById('loadingOverlay').classList.add('on');}
+function unload(){document.getElementById('loadingOverlay').classList.remove('on');}
+function closeM(id){document.getElementById(id).classList.remove('on');}
+function showErr(id,m){const e=document.getElementById(id);e.textContent=m;e.style.display='block';}
+function fmtTs(ts){if(!ts)return'';const d=new Date(ts);return d.toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});}
+function fmtDate(d){if(!d)return'—';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;}
+function today(){return new Date().toISOString().slice(0,10);}
+function diffDays(a,b){return Math.round((new Date(b)-new Date(a))/864e5);}
+function getStatus(sched,actual){if(!actual)return today()>sched?'risk':'pend';return actual<=sched?'ok':'late';}
+function statusBadge(s){return`<span class="s${s}">${{ok:'✓ Cumplido',late:'✗ Incumplido',risk:'⚠ Vencido s/reporte',pend:'– Pendiente'}[s]}</span>`;}
+function diffHtml(sched,actual){if(!actual)return'';const d=diffDays(sched,actual);if(d===0)return`<span class="di ok">Puntual</span>`;if(d<0)return`<span class="di ok">${Math.abs(d)}d antes</span>`;return`<span class="di late">+${d}d tarde</span>`;}
+function insKey(r,i){return`${r}||${i}`;}
+function byLine(e){return e&&e.editedBy?`<div class="by">Por: ${e.editedBy} · ${ORG_LABELS[e.editedOrg]||''} · ${fmtTs(e.editedAt)}</div>`:''}
+function codeBg(o){return{FZ:'#1d4ed8',PT:'#b5530f',CT:'#6d28d9',TS:'#047857',AS:'#374151'}[o]||'#374151';}
+
+// ── LOGIN ────────────────────────────────────────────────────────────
+function openLogin(){
+  document.getElementById('lName').value=currentUser?currentUser.name:'';
+  document.getElementById('lOrg').value=currentUser?currentUser.org:'FZ';
+  document.getElementById('lPwd').value='';
+  document.getElementById('lErr').style.display='none';
+  document.getElementById('loginBg').classList.add('on');
+}
+async function doLogin(){
+  const name=document.getElementById('lName').value.trim(),org=document.getElementById('lOrg').value,pwd=document.getElementById('lPwd').value;
+  if(!name){showErr('lErr','Por favor ingresa tu nombre.');return;}
+  const role=matchPwd(pwd);
+  if(!role){showErr('lErr','Contraseña incorrecta.');return;}
+  currentUser={name,org,role};
+  localStorage.setItem(SES_KEY,JSON.stringify(currentUser));
+  closeM('loginBg');updateBar();applyPermissions();renderAll();
+}
+
+// ── SETUP ────────────────────────────────────────────────────────────
+async function doSetup(){
+  const name=document.getElementById('sName').value.trim(),org=document.getElementById('sOrg').value;
+  let apiKey=document.getElementById('sApiKey').value.trim();
+  let adminPwd=document.getElementById('sAdmin').value.trim(),editPwd=document.getElementById('sEdit').value.trim(),viewPwd=document.getElementById('sView').value.trim();
+  let pbToUse=null;
+  const calCode=document.getElementById('sCalCode').value.trim();
+
+  // Try to extract from calendar config code
+  if(calCode){
+    try{
+      const parsed=JSON.parse(atob(calCode));
+      if(parsed.k)apiKey=parsed.k;
+      if(parsed.pb)pbToUse=parsed.pb;
+      if(!adminPwd&&!editPwd&&!viewPwd){
+        // Read passwords from calendar's bin
+        if(parsed.pb&&parsed.k){
+          load('Leyendo configuración del Calendario...');
+          try{const p=await jbRead(parsed.pb,parsed.k);adminPwd=p.adminPwd;editPwd=p.editPwd;viewPwd=p.viewPwd;}catch(e){}
+          unload();
+        }
+      }
+    }catch(e){}
+  }
+
+  document.getElementById('sErr').style.display='none';
+  if(!name||!apiKey||!adminPwd||!editPwd||!viewPwd){showErr('sErr','Por favor completa todos los campos (o pega el código del Calendario).');return;}
+  if(!pbToUse&&(adminPwd===editPwd||adminPwd===viewPwd||editPwd===viewPwd)){showErr('sErr','Las tres contraseñas deben ser diferentes.');return;}
+
+  load('Creando almacenamiento en JSONBin...');
+  try{
+    if(!pbToUse) pbToUse=await jbCreate('fz-passwords',{adminPwd,editPwd,viewPwd},apiKey);
+    const db=await jbCreate('fz-ans-data',{"_v":1},apiKey);
+    // nb for calendar notes (might not exist yet, create placeholder)
+    const nb=await jbCreate('fz-cal-notes-placeholder',{"_v":1},apiKey);
+
+    cfg={k:apiKey,pb:pbToUse,db,nb};
+    saveCfgLocal();
+    passwords={adminPwd,editPwd,viewPwd};
+    ansData={};
+    PERIODS.forEach(p=>{if(!ansData[p.id])ansData[p.id]={milestones:{},insurers:{}};});
+    currentUser={name,org,role:'admin'};
+    localStorage.setItem(SES_KEY,JSON.stringify(currentUser));
+
+    // Use the current file's own URL — reliable, no manipulation
+    const hash=btoa(JSON.stringify(cfg));
+    _ansUrl = window.location.href.split('#')[0] + '#' + hash;
+    _calUrl = _ansUrl.replace('ans_tracker.html', 'calendario_conciliacion.html');
+    showResult(_calUrl, _ansUrl, hash);
+    unload();
+  }catch(e){unload();showErr('sErr','Error al conectar con JSONBin: '+e.message+'. Verifica que tu Master Key sea correcta (debe empezar con $2a$10$).');}
+}
+
+function enterApp(){closeM('setupBg');updateBar();applyPermissions();renderAll();}
+let _calUrl='', _ansUrl='';
+function showResult(calUrl, ansUrl, hash){
+  // Show the result div FIRST, then populate elements
+  const resultDiv = document.getElementById('setupResult');
+  resultDiv.style.display = 'block';
+  // Now elements exist and are accessible
+  const ids = {
+    previewCal: calUrl, previewAns: ansUrl,
+    previewCode: hash
+  };
+  Object.entries(ids).forEach(([id, val])=>{
+    const el = document.getElementById(id);
+    if(el){ el.textContent = val; el.title = val; }
+  });
+}
+async function doCopy(which){
+  const txtMap={cal:_calUrl, ans:_ansUrl, code:btoa(JSON.stringify(cfg))};
+  const txt = txtMap[which]||'';
+  if(!txt){ alert('No hay URL disponible aún.'); return; }
+  const btnId = 'btn'+which.charAt(0).toUpperCase()+which.slice(1);
+  const btn = document.getElementById(btnId);
+  const origTxt = btn ? btn.textContent : '';
+  try{ await navigator.clipboard.writeText(txt); }
+  catch(e){
+    const ta=document.createElement('textarea');
+    ta.value=txt; ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+  }
+  if(btn){ btn.textContent='✓ Copiado!'; btn.style.background='#166534';
+    setTimeout(()=>{ btn.textContent=origTxt; btn.style.background=which==='code'?'#b45309':'#15803d'; },2500); }
+}
+
+function applyCfgCode(){
+  const code=document.getElementById('cfgCode').value.trim();
+  try{const p=JSON.parse(atob(code));if(!p.k||!p.pb||!p.db)throw new Error('Incompleto');cfg=p;saveCfgLocal();closeM('configBg');loadAndShowLogin();}
+  catch(e){showErr('cfgErr','Código inválido.');}
+}
+
+// ── ADMIN ────────────────────────────────────────────────────────────
+function openAdmin(){
+  ['Admin','Edit','View'].forEach(t=>{document.getElementById('show'+t).textContent=passwords[t.toLowerCase()+'Pwd']||'—';document.getElementById('new'+t).value='';});
+  document.getElementById('adminBg').classList.add('on');
+}
+async function changePwd(type){
+  const val=document.getElementById('new'+type.charAt(0).toUpperCase()+type.slice(1)).value.trim();
+  if(!val){alert('Ingresa la nueva contraseña.');return;}
+  const others=['admin','edit','view'].filter(t=>t!==type).map(t=>passwords[t+'Pwd']);
+  if(others.includes(val)){alert('Contraseña ya en uso.');return;}
+  load('Guardando...');
+  passwords[type+'Pwd']=val;
+  try{await jbUpdate(cfg.pb,passwords,cfg.k);unload();openAdmin();alert('✓ Actualizada.');}
+  catch(e){unload();alert('Error: '+e.message);}
+}
+
+// ── DATA ─────────────────────────────────────────────────────────────
+const INSURERS={
+  'Autos':['Mapfre','AXA','Zurich','SBS','HDI','Seguros del Estado','Previsora','Qualitas','Allianz','Seguros Bolívar'],
+  'Vida':['SBS'],
+  'Voluntarios':['SBS','Panamerican'],
+};
+
+const PERIODS=[
+  {id:'P07',label:'Julio 2026',cobroLabel:'Cobro Junio 2026',h3:'2026-07-03',milestones:[
+    {id:'h1',code:'H1',owner:'FZ',sched:'2026-07-02',title:'Entrega base vigentes',desc:'2º día hábil del mes.'},
+    {id:'h2',code:'H2',owner:'PT',sched:'2026-07-03',title:'1ª retroalimentación vigentes',desc:'Duplicados, placas y coexistencia.'},
+    {id:'h3',code:'H3',owner:'AS',sched:'2026-07-03',title:'Entrega cobros aseguradoras',desc:'Día 5 cae domingo → adelantado.'},
+    {id:'h4',code:'H4',owner:'PT',sched:'2026-07-10',title:'Cobros conciliados a Seguros Finanzauto',desc:'Mínimo 2 días hábiles desde H3.'},
+    {id:'h6',code:'H6',owner:'PT',sched:'2026-07-17',title:'Conciliación robusta + base vigentes ajustada',desc:'4 días hábiles desde H4.'},
+    {id:'h5h7',code:'H5/H7',owner:'FZ',sched:'2026-07-21',title:'Cierre conciliación + entrega Contabilidad',desc:'5 días hábiles desde H4 (13 jul festivo).'},
+    {id:'h8',code:'H8',owner:'CT',sched:'2026-07-28',title:'Resultado conciliación Contabilidad',desc:'5 días hábiles desde H7.'},
+    {id:'h9',code:'H9',owner:'FZ',sched:'2026-08-14',title:'Retroalimentación final a Contabilidad',desc:'12 días hábiles desde H8.',nm:true},
+    {id:'h10',code:'H10',owner:'TS',sched:'2026-08-26',title:'Reporte a Tesorería · PAGO',desc:'≥3 días hábiles antes del cierre.',nm:true},
+  ]},
+  {id:'P08',label:'Agosto 2026',cobroLabel:'Cobro Julio 2026',h3:'2026-08-05',milestones:[
+    {id:'h1',code:'H1',owner:'FZ',sched:'2026-08-04',title:'Entrega base vigentes',desc:'2º día hábil.'},
+    {id:'h2',code:'H2',owner:'PT',sched:'2026-08-05',title:'1ª retroalimentación vigentes',desc:'Duplicados, placas y coexistencia.'},
+    {id:'h3',code:'H3',owner:'AS',sched:'2026-08-05',title:'Entrega cobros aseguradoras',desc:'Día 5 calendario.'},
+    {id:'h4',code:'H4',owner:'PT',sched:'2026-08-10',title:'Cobros conciliados',desc:'Día 10 calendario.'},
+    {id:'h6',code:'H6',owner:'PT',sched:'2026-08-14',title:'Conciliación robusta + base ajustada',desc:'4 días hábiles desde H4.'},
+    {id:'h5h7',code:'H5/H7',owner:'FZ',sched:'2026-08-18',title:'Cierre conciliación + entrega Contabilidad',desc:'5 días hábiles desde H4.'},
+    {id:'h8',code:'H8',owner:'CT',sched:'2026-08-25',title:'Resultado conciliación Contabilidad',desc:'5 días hábiles desde H7.'},
+    {id:'h9',code:'H9',owner:'FZ',sched:'2026-09-10',title:'Retroalimentación final a Contabilidad',desc:'12 días hábiles desde H8.',nm:true},
+    {id:'h10',code:'H10',owner:'TS',sched:'2026-09-25',title:'Reporte a Tesorería · PAGO',desc:'≥3 días hábiles antes del cierre.',nm:true},
+  ]},
+  {id:'P09',label:'Septiembre 2026',cobroLabel:'Cobro Agosto 2026',h3:'2026-09-04',milestones:[
+    {id:'h1',code:'H1',owner:'FZ',sched:'2026-09-02',title:'Entrega base vigentes',desc:'2º día hábil.'},
+    {id:'h2',code:'H2',owner:'PT',sched:'2026-09-03',title:'1ª retroalimentación vigentes',desc:'Hallazgos.'},
+    {id:'h3',code:'H3',owner:'AS',sched:'2026-09-04',title:'Entrega cobros aseguradoras',desc:'Día 5 cae sábado → adelantado.'},
+    {id:'h4',code:'H4',owner:'PT',sched:'2026-09-10',title:'Cobros conciliados',desc:'Día 10.'},
+    {id:'h6',code:'H6',owner:'PT',sched:'2026-09-16',title:'Conciliación robusta + base ajustada',desc:'4 días hábiles desde H4.'},
+    {id:'h5h7',code:'H5/H7',owner:'FZ',sched:'2026-09-17',title:'Cierre conciliación + entrega Contabilidad',desc:'5 días hábiles desde H4.'},
+    {id:'h8',code:'H8',owner:'CT',sched:'2026-09-24',title:'Resultado conciliación Contabilidad',desc:'5 días hábiles desde H7.'},
+    {id:'h9',code:'H9',owner:'FZ',sched:'2026-10-13',title:'Retroalimentación final a Contabilidad',desc:'12 días hábiles desde H8.',nm:true},
+    {id:'h10',code:'H10',owner:'TS',sched:'2026-10-27',title:'Reporte a Tesorería · PAGO',desc:'≥3 días hábiles antes del cierre.',nm:true},
+  ]},
+  {id:'P10',label:'Octubre 2026',cobroLabel:'Cobro Septiembre 2026',h3:'2026-10-05',milestones:[
+    {id:'h1',code:'H1',owner:'FZ',sched:'2026-10-02',title:'Entrega base vigentes',desc:'2º día hábil.'},
+    {id:'h2',code:'H2',owner:'PT',sched:'2026-10-05',title:'1ª retroalimentación vigentes',desc:'Hallazgos.'},
+    {id:'h3',code:'H3',owner:'AS',sched:'2026-10-05',title:'Entrega cobros aseguradoras',desc:'Día 5 calendario.'},
+    {id:'h4',code:'H4',owner:'PT',sched:'2026-10-09',title:'Cobros conciliados',desc:'Día 10 cae sábado → adelantado.'},
+    {id:'h6',code:'H6',owner:'PT',sched:'2026-10-16',title:'Conciliación robusta + base ajustada',desc:'4 días hábiles desde H4.'},
+    {id:'h5h7',code:'H5/H7',owner:'FZ',sched:'2026-10-19',title:'Cierre conciliación + entrega Contabilidad',desc:'5 días hábiles desde H4.'},
+    {id:'h8',code:'H8',owner:'CT',sched:'2026-10-26',title:'Resultado conciliación Contabilidad',desc:'5 días hábiles desde H7.'},
+    {id:'h9',code:'H9',owner:'FZ',sched:'2026-11-12',title:'Retroalimentación final a Contabilidad',desc:'12 días hábiles desde H8.',nm:true},
+    {id:'h10',code:'H10',owner:'TS',sched:'2026-11-25',title:'Reporte a Tesorería · PAGO',desc:'≥3 días hábiles antes del cierre.',nm:true},
+  ]},
+  {id:'P11',label:'Noviembre 2026',cobroLabel:'Cobro Octubre 2026',h3:'2026-11-05',milestones:[
+    {id:'h1',code:'H1',owner:'FZ',sched:'2026-11-04',title:'Entrega base vigentes',desc:'2º día hábil.'},
+    {id:'h2',code:'H2',owner:'PT',sched:'2026-11-05',title:'1ª retroalimentación vigentes',desc:'Hallazgos.'},
+    {id:'h3',code:'H3',owner:'AS',sched:'2026-11-05',title:'Entrega cobros aseguradoras',desc:'Día 5 calendario.'},
+    {id:'h4',code:'H4',owner:'PT',sched:'2026-11-10',title:'Cobros conciliados',desc:'Día 10.'},
+    {id:'h6',code:'H6',owner:'PT',sched:'2026-11-17',title:'Conciliación robusta + base ajustada',desc:'4 días hábiles desde H4.'},
+    {id:'h5h7',code:'H5/H7',owner:'FZ',sched:'2026-11-18',title:'Cierre conciliación + entrega Contabilidad',desc:'5 días hábiles desde H4.'},
+    {id:'h8',code:'H8',owner:'CT',sched:'2026-11-25',title:'Resultado conciliación Contabilidad',desc:'5 días hábiles desde H7.'},
+    {id:'h9',code:'H9',owner:'FZ',sched:'2026-12-14',title:'Retroalimentación final a Contabilidad',desc:'12 días hábiles desde H8.',nm:true},
+    {id:'h10',code:'H10',owner:'TS',sched:'2026-12-28',title:'Reporte a Tesorería · PAGO',desc:'≥3 días hábiles antes del cierre.',nm:true},
+  ]},
+  {id:'P12',label:'Diciembre 2026',cobroLabel:'Cobro Noviembre 2026',h3:'2026-12-04',milestones:[
+    {id:'h1',code:'H1',owner:'FZ',sched:'2026-12-02',title:'Entrega base vigentes',desc:'2º día hábil.'},
+    {id:'h2',code:'H2',owner:'PT',sched:'2026-12-03',title:'1ª retroalimentación vigentes',desc:'Hallazgos.'},
+    {id:'h3',code:'H3',owner:'AS',sched:'2026-12-04',title:'Entrega cobros aseguradoras',desc:'Día 5 cae sábado → adelantado.'},
+    {id:'h4',code:'H4',owner:'PT',sched:'2026-12-10',title:'Cobros conciliados',desc:'Día 10.'},
+    {id:'h6',code:'H6',owner:'PT',sched:'2026-12-16',title:'Conciliación robusta + base ajustada',desc:'4 días hábiles desde H4.'},
+    {id:'h5h7',code:'H5/H7',owner:'FZ',sched:'2026-12-17',title:'Cierre conciliación + entrega Contabilidad',desc:'5 días hábiles desde H4.'},
+    {id:'h8',code:'H8',owner:'CT',sched:'2026-12-24',title:'Resultado conciliación Contabilidad',desc:'5 días hábiles desde H7.'},
+    {id:'h9',code:'H9',owner:'FZ',sched:'2027-01-13',title:'Retroalimentación final a Contabilidad',desc:'12 días hábiles desde H8. Enero 2027.',nm:true},
+    {id:'h10',code:'H10',owner:'TS',sched:'2027-01-26',title:'Reporte a Tesorería · PAGO',desc:'≥3 días hábiles antes del cierre de enero 2027.',nm:true},
+  ]},
+];
+
+const CHIPS={FZ:'<span class="chip cFZ">S. Finanzauto</span>',PT:'<span class="chip cPT">Op. Promotec</span>',CT:'<span class="chip cCT">Contabilidad</span>',TS:'<span class="chip cTS">Tesorería</span>',AS:'<span class="chip cAS">Aseguradoras</span>'};
+const RC={Autos:'AUTOS',Vida:'VIDA',Voluntarios:'VOL'};
+
+// ── DASHBOARD ────────────────────────────────────────────────────────
+function calcStats(pid){
+  const p=PERIODS.find(x=>x.id===pid),pd=ansData[pid]||{milestones:{},insurers:{}};
+  let t=0,ok=0,late=0,risk=0,pend=0;
+  p.milestones.forEach(m=>{const s=getStatus(m.sched,(pd.milestones[m.id]||{}).actual||'');t++;({ok:()=>ok++,late:()=>late++,risk:()=>risk++,pend:()=>pend++})[s]();});
+  Object.entries(INSURERS).forEach(([r,ins])=>ins.forEach(i=>{const s=getStatus(p.h3,(pd.insurers[insKey(r,i)]||{}).actual||'');t++;({ok:()=>ok++,late:()=>late++,risk:()=>risk++,pend:()=>pend++})[s]();}));
+  return{t,ok,late,risk,pend,pct:t>0?Math.round(ok/t*100):0};
+}
+function renderDash(){
+  const p=PERIODS.find(x=>x.id===activePeriod),s=calcStats(activePeriod);
+  const c=s.pct>=80?'ok':s.pct>=50?'warn':'late';
+  document.getElementById('dash').innerHTML=`
+    <div class="dc ${c}"><div class="dl">ANS Global</div><div class="dv">${s.pct}%</div><div class="ds">${s.ok} de ${s.t} hitos</div><div class="pbar"><div class="pbar-fill pf-${c}" style="width:${s.pct}%"></div></div></div>
+    <div class="dc ok"><div class="dl">Cumplidos</div><div class="dv">${s.ok}</div><div class="ds">a tiempo o antes</div></div>
+    <div class="dc late"><div class="dl">Incumplidos</div><div class="dv">${s.late}</div><div class="ds">con retraso</div></div>
+    <div class="dc warn"><div class="dl">Vencidos s/reporte</div><div class="dv">${s.risk}</div><div class="ds">plazo superado sin fecha</div></div>
+    <div class="dc pend"><div class="dl">Pendientes</div><div class="dv">${s.pend}</div><div class="ds">dentro de plazo</div></div>
+    <div class="dc" style="background:#f8f5f0"><div class="dl">Periodo</div><div class="dv" style="font-size:16px;margin-top:4px">${p.label}</div><div class="ds">${p.cobroLabel}</div></div>`;
+}
+
+// ── MILESTONES ───────────────────────────────────────────────────────
+function renderMilestones(){
+  const p=PERIODS.find(x=>x.id===activePeriod),pd=ansData[activePeriod]||{milestones:{},insurers:{}};
+  document.getElementById('pInfo').textContent=`${p.cobroLabel} · ${p.milestones.length} hitos`;
+  document.getElementById('mBody').innerHTML=p.milestones.map(m=>{
+    const e=pd.milestones[m.id]||{},s=getStatus(m.sched,e.actual||'');
+    const lf=e.actual&&diffDays(m.sched,e.actual)>0;
+    return`<tr>
+      <td><span style="background:${codeBg(m.owner)};color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:9px">${m.code}</span></td>
+      <td><strong>${m.title}</strong>${m.nm?'<span class="sb">mes sig.</span>':''}<div style="font-size:11px;color:#6b7280;margin-top:2px">${m.desc}</div></td>
+      <td>${CHIPS[m.owner]||m.owner}</td>
+      <td style="white-space:nowrap">${fmtDate(m.sched)}</td>
+      <td><input type="date" class="di-in${e.actual?(lf?' latefill':' filled'):''}" value="${e.actual||''}"
+          onchange="qSaveM('${activePeriod}','${m.id}',this.value)" ${canEdit()?'':'disabled'}>${byLine(e)}</td>
+      <td>${diffHtml(m.sched,e.actual||'')}</td>
+      <td>${statusBadge(s)}</td>
+      <td class="edit-only"><button class="note-btn${e.notes?' has-note':''}"
+          onclick="openEdit('${activePeriod}','m','${m.id}','${m.title.replace(/'/g,"\\'")}','${m.sched}')">
+          ${e.notes?'✎':'+'} Nota</button></td>
+    </tr>`;
+  }).join('');
+}
+async function qSaveM(pid,mid,val){
+  if(!ansData[pid])ansData[pid]={milestones:{},insurers:{}};
+  if(!ansData[pid].milestones[mid])ansData[pid].milestones[mid]={};
+  Object.assign(ansData[pid].milestones[mid],{actual:val||'',editedBy:currentUser.name,editedOrg:currentUser.org,editedAt:new Date().toISOString()});
+  load('Guardando...');
+  try{await jbUpdate(cfg.db,ansData,cfg.k);unload();renderMilestones();renderDash();renderTabs();}
+  catch(e){unload();alert('Error al guardar: '+e.message);}
+}
+
+// ── INSURERS ─────────────────────────────────────────────────────────
+function populateInsFilter(){
+  const all=[...new Set(Object.values(INSURERS).flat())].sort();
+  document.getElementById('fIns').innerHTML='<option value="">Todas</option>'+all.map(i=>`<option>${i}</option>`).join('');
+}
+function renderIns(){
+  const p=PERIODS.find(x=>x.id===activePeriod),pd=ansData[activePeriod]||{milestones:{},insurers:{}};
+  const rf=document.getElementById('fRamo').value,inf=document.getElementById('fIns').value;
+  let rows='';
+  Object.entries(INSURERS).forEach(([ramo,ins])=>{
+    if(rf&&rf!==ramo)return;
+    ins.forEach(i=>{
+      if(inf&&inf!==i)return;
+      const k=insKey(ramo,i),e=pd.insurers[k]||{},s=getStatus(p.h3,e.actual||'');
+      const lf=e.actual&&diffDays(p.h3,e.actual)>0;
+      rows+=`<tr>
+        <td><span class="chip c${RC[ramo]}">${ramo}</span></td>
+        <td><strong>${i}</strong></td>
+        <td style="white-space:nowrap">${fmtDate(p.h3)}</td>
+        <td><input type="date" class="di-in${e.actual?(lf?' latefill':' filled'):''}" value="${e.actual||''}"
+            onchange="qSaveI('${activePeriod}','${k.replace(/'/g,"\\'")}',this.value)" ${canEdit()?'':'disabled'}>${byLine(e)}</td>
+        <td>${diffHtml(p.h3,e.actual||'')}</td>
+        <td>${statusBadge(s)}</td>
+        <td class="edit-only"><button class="note-btn${e.notes?' has-note':''}"
+            onclick="openEdit('${activePeriod}','i','${k.replace(/'/g,"\\'")}','${i} · ${ramo}','${p.h3}')">
+            ${e.notes?'✎':'+'} Nota</button></td>
+      </tr>`;
+    });
+  });
+  document.getElementById('iBody').innerHTML=rows||`<tr><td colspan="7" style="padding:18px;color:#9ca3af;text-align:center">Sin registros para este filtro.</td></tr>`;
+}
+async function qSaveI(pid,key,val){
+  if(!ansData[pid])ansData[pid]={milestones:{},insurers:{}};
+  if(!ansData[pid].insurers[key])ansData[pid].insurers[key]={};
+  Object.assign(ansData[pid].insurers[key],{actual:val||'',editedBy:currentUser.name,editedOrg:currentUser.org,editedAt:new Date().toISOString()});
+  load('Guardando...');
+  try{await jbUpdate(cfg.db,ansData,cfg.k);unload();renderIns();renderDash();renderTabs();}
+  catch(e){unload();alert('Error al guardar: '+e.message);}
+}
+
+// ── EDIT MODAL ───────────────────────────────────────────────────────
+function openEdit(pid,type,key,title,sched){
+  if(!canEdit()){alert('Acceso de solo visualización.');return;}
+  modalCtx={pid,type,key,title,sched};
+  const pd=ansData[pid]||{milestones:{},insurers:{}};
+  const e=type==='m'?(pd.milestones[key]||{}):(pd.insurers[key]||{});
+  document.getElementById('eMT').textContent=title;
+  document.getElementById('eMS').textContent=`Periodo: ${PERIODS.find(x=>x.id===pid).label} · Programado: ${fmtDate(sched)}`;
+  document.getElementById('eSc').value=sched;
+  document.getElementById('eAc').value=e.actual||'';
+  document.getElementById('eNo').value=e.notes||'';
+  document.getElementById('eAt').innerHTML=e.editedBy?`Última edición: <strong>${e.editedBy}</strong> · ${ORG_LABELS[e.editedOrg]||''} · ${fmtTs(e.editedAt)}`:'';
+  document.getElementById('editBg').classList.add('on');
+}
+async function saveEntry(){
+  if(!modalCtx)return;
+  const{pid,type,key}=modalCtx;
+  const actual=document.getElementById('eAc').value,notes=document.getElementById('eNo').value.trim();
+  const entry={actual,notes,editedBy:currentUser.name,editedOrg:currentUser.org,editedAt:new Date().toISOString()};
+  if(!ansData[pid])ansData[pid]={milestones:{},insurers:{}};
+  if(type==='m'){if(!ansData[pid].milestones[key])ansData[pid].milestones[key]={};Object.assign(ansData[pid].milestones[key],entry);}
+  else{if(!ansData[pid].insurers[key])ansData[pid].insurers[key]={};Object.assign(ansData[pid].insurers[key],entry);}
+  load('Guardando...');
+  try{await jbUpdate(cfg.db,ansData,cfg.k);unload();closeM('editBg');renderAll();}
+  catch(e){unload();alert('Error al guardar: '+e.message);}
+}
+
+// ── TABS ─────────────────────────────────────────────────────────────
+function renderTabs(){
+  document.getElementById('tabs').innerHTML=PERIODS.map(p=>{
+    const s=calcStats(p.id);
+    const c=s.late>0?'#ef4444':s.risk>0?'#f59e0b':s.ok===s.t&&s.t>0?'#22c55e':'#94a3b8';
+    return`<button class="tab${p.id===activePeriod?' active':''}" onclick="switchPeriod('${p.id}')">
+      ${p.label.split(' ')[0]}<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${c};margin-left:6px;vertical-align:middle"></span>
+    </button>`;
+  }).join('');
+}
+function switchPeriod(id){activePeriod=id;renderAll();}
+function renderAll(){renderTabs();renderDash();renderMilestones();renderIns();}
+
+// ── INIT ─────────────────────────────────────────────────────────────
+async function loadAndShowLogin(){
+  load('Cargando datos...');
+  try{
+    passwords=await jbRead(cfg.pb,cfg.k);
+    const raw=await jbRead(cfg.db,cfg.k);
+    // raw may be empty {} on first use
+    PERIODS.forEach(p=>{if(!raw[p.id])raw[p.id]={milestones:{},insurers:{}};});
+    ansData=raw;
+    unload();
+    try{
+      const s=JSON.parse(localStorage.getItem(SES_KEY)||'{}');
+      if(s.name&&s.role){currentUser=s;updateBar();applyPermissions();populateInsFilter();renderAll();return;}
+    }catch(e){}
+    openLogin();
+  }catch(e){unload();alert('Error al cargar datos: '+e.message);}
+}
+
+async function init(){
+  populateInsFilter();
+  if(cfgFromHash()){await loadAndShowLogin();return;}
+  loadCfgLocal();
+  if(cfg&&cfg.k&&cfg.pb&&cfg.db){await loadAndShowLogin();return;}
+  document.getElementById('setupBg').classList.add('on');
+}
+init();
+</script>
+</body>
+</html>
